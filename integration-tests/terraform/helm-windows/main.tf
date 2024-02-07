@@ -122,7 +122,7 @@ resource "aws_eks_node_group" "this" {
 # EKS Windows Node Groups
 resource "aws_eks_node_group" "node_group_windows-2022" {
   cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "${local.cluster_name}-windows-node"
+  node_group_name = "${local.cluster_name}-windows-node-2022"
   node_role_arn   = aws_iam_role.node_role.arn
   subnet_ids      = module.basic_components.public_subnet_ids
 
@@ -148,7 +148,7 @@ resource "aws_eks_node_group" "node_group_windows-2022" {
 # EKS Windows Node Groups
 resource "aws_eks_node_group" "node_group_windows-2019" {
   cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "${local.cluster_name}-windows-node"
+  node_group_name = "${local.cluster_name}-windows-node-2019"
   node_role_arn   = aws_iam_role.node_role.arn
   subnet_ids      = module.basic_components.public_subnet_ids
 
