@@ -120,7 +120,7 @@ resource "aws_eks_node_group" "this" {
 }
 
 # EKS Windows Node Groups
-resource "aws_eks_node_group" "node_group_windows" {
+resource "aws_eks_node_group" "node_group_windows-2022" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${local.cluster_name}-windows-node"
   node_role_arn   = aws_iam_role.node_role.arn
@@ -137,6 +137,31 @@ resource "aws_eks_node_group" "node_group_windows" {
   disk_size      = 50
   instance_types = ["t3.large"]
 
+  depends_on = [
+    aws_iam_role_policy_attachment.node_CloudWatchAgentServerPolicy,
+    aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
+    aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
+    aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy
+  ]
+}
+
+# EKS Windows Node Groups
+resource "aws_eks_node_group" "node_group_windows-2019" {
+  cluster_name    = aws_eks_cluster.this.name
+  node_group_name = "${local.cluster_name}-windows-node"
+  node_role_arn   = aws_iam_role.node_role.arn
+  subnet_ids      = module.basic_components.public_subnet_ids
+
+  scaling_config {
+    desired_size = 1
+    max_size     = 1
+    min_size     = 1
+  }
+
+  ami_type       = "WINDOWS_CORE_2019_x86_64"
+  capacity_type  = "ON_DEMAND"
+  disk_size      = 50
+  instance_types = ["t3.large"]
 
   depends_on = [
     aws_iam_role_policy_attachment.node_CloudWatchAgentServerPolicy,
@@ -190,7 +215,8 @@ resource "null_resource" "kubectl" {
   depends_on = [
     aws_eks_cluster.this,
     aws_eks_node_group.this,
-    aws_eks_node_group.node_group_windows
+    aws_eks_node_group.node_group_windows-2019,
+    aws_eks_node_group.node_group_windows-2022
   ]
   provisioner "local-exec" {
     command = <<-EOT
@@ -215,7 +241,8 @@ data "kubernetes_config_map" "debug1" {
   depends_on = [
     aws_eks_cluster.this,
     aws_eks_node_group.this,
-    aws_eks_node_group.node_group_windows
+    aws_eks_node_group.node_group_windows-2019,
+    aws_eks_node_group.node_group_windows-2022
   ]
   metadata {
     name      = "aws-auth"
