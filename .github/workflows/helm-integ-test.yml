@@ -59,7 +59,7 @@ jobs:
           command: |
             cd integration-tests/terraform/helm-windows
             terraform init
-            terraform apply -auto-approve \
+            terraform apply -var="windows_os_version=WINDOWS_CORE_2019_x86_64" -auto-approve \
                 -var="kube_dir=${{ github.workspace }}/../../../.kube"
 
       - name: Terraform destroy
