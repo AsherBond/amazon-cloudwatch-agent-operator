@@ -58,7 +58,7 @@ jobs:
           file: ./Dockerfile
           context: .
           push: true
-          tags: locked-1.0
+          tags: 506463145083.dkr.ecr.us-west-2.amazonaws.com/cwagent-operator-pre-release:locked-1.0
           platforms: linux/amd64, linux/arm64
 
   e2e-test:
