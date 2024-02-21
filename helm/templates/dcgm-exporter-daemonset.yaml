@@ -25,6 +25,8 @@ spec:
               - key: {{ .Values.gpuNodeLabelKey }}
                 operator: In
                 values: {{ .Values.gpuInstances | toYaml | nindent 16 }}
+      nodeSelector:
+        kubernetes.io/os: linux
       containers:
       - name: dcgm-exporter
         image: "{{ .Values.dcgmExporter.image.repository }}:{{ .Values.dcgmExporter.image.tag }}"

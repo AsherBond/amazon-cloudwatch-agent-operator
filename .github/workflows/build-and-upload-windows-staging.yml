@@ -1,16 +1,16 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-name: Build And Upload Staging Artifact
+name: Build And Upload Staging Artifact for Windows
 env:
   # Use terraform assume role for uploading to ecr
   AWS_ASSUME_ROLE: ${{ secrets.TERRAFORM_AWS_ASSUME_ROLE }}
-  ECR_OPERATOR_STAGING_IMAGE: ${{ secrets.ECR_OPERATOR_STAGING_IMAGE }}
+  ECR_OPERATOR_STAGING_IMAGE: ${{ secrets.ECR_OPERATOR_WINDOWS_CI_STAGING_IMAGE }}
 
 on:
   push:
     branches:
-      - locked-gpu-windows
+      - main-ciwindows
   workflow_dispatch:
   workflow_call:
 
@@ -58,7 +58,7 @@ jobs:
           file: ./Dockerfile
           context: .
           push: true
-          tags: 506463145083.dkr.ecr.us-west-2.amazonaws.com/cwagent-operator-pre-release:locked-gpu-windows-1.0
+          tags: ${{ env.ECR_OPERATOR_STAGING_IMAGE }}
           platforms: linux/amd64, linux/arm64
 
   e2e-test:
