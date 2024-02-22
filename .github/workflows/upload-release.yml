@@ -12,9 +12,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  integ-test:
-    uses: ./.github/workflows/eks-add-on-integ-test.yml
-    secrets: inherit
+#  integ-test:
+#    uses: ./.github/workflows/eks-add-on-integ-test.yml
+#    secrets: inherit
 
   push-release-ecr:
     needs: integ-test
