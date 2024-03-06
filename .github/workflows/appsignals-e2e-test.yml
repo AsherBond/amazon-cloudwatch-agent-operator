@@ -26,7 +26,6 @@ env:
   SAMPLE_APP_REMOTE_SERVICE_IMAGE: ${{ secrets.APP_SIGNALS_E2E_SAMPLE_APP_REMOTE_SVC_IMG }}
   METRIC_NAMESPACE: AppSignals
   LOG_GROUP: /aws/appsignals/eks
-  ECR_OPERATOR_STAGING_IMAGE: 506463145083.dkr.ecr.us-west-2.amazonaws.com/cwagent-operator-pre-release:latest
 
 jobs:
   appsignals-e2e-test:
