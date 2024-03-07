@@ -260,52 +260,52 @@ jobs:
 #          --request-body ip=${{ env.REMOTE_SERVICE_POD_IP }}
 #          --rollup'
 #
-#      # Clean up Procedures
-#
-#      - name: Remove log group deletion command
-#        if: always()
-#        working-directory: enablement-script/scripts/eks/appsignals
-#        run: |
-#          delete_log_group="aws logs delete-log-group --log-group-name '${{ env.LOG_GROUP }}' --region \$REGION"
-#          sed -i "s#$delete_log_group##g" clean-app-signals.sh
-#
-#      - name: Clean Up App Signals
-#        if: always()
-#        continue-on-error: true
-#        working-directory: enablement-script/scripts/eks/appsignals
-#        run: |
-#          ./clean-app-signals.sh \
-#          ${{ inputs.test-cluster-name }} \
-#          ${{ env.AWS_DEFAULT_REGION }} \
-#          ${{ env.SAMPLE_APP_NAMESPACE }}
-#
-#      # This step also deletes lingering resources from previous test runs
-#      - name: Delete all sample app resources
-#        if: always()
-#        continue-on-error: true
-#        timeout-minutes: 10
-#        run: kubectl delete namespace ${{ env.SAMPLE_APP_NAMESPACE }}
+      # Clean up Procedures
 
-#      - name: Terraform destroy
-#        if: always()
-#        continue-on-error: true
-#        working-directory: terraform/eks
-#        run: |
-#          terraform destroy -auto-approve \
-#            -var="test_id=${{ env.TESTING_ID }}" \
-#            -var="aws_region=${{ env.AWS_DEFAULT_REGION }}" \
-#            -var="kube_directory_path=${{ github.workspace }}/.kube" \
-#            -var="eks_cluster_name=${{ inputs.test-cluster-name }}" \
-#            -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
-#            -var="service_account_aws_access=service-account-${{ env.TESTING_ID }}" \
-#            -var="sample_app_image=${{ env.SAMPLE_APP_IMAGE }}"
-#
-#      - name: Remove aws access service account
-#        if: always()
-#        continue-on-error: true
-#        run: |
-#          eksctl delete iamserviceaccount \
-#          --name service-account-${{ env.TESTING_ID }} \
-#          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
-#          --cluster ${{ inputs.test-cluster-name }} \
-#          --region ${{ env.AWS_DEFAULT_REGION }}
+      - name: Remove log group deletion command
+        if: always()
+        working-directory: enablement-script/scripts/eks/appsignals
+        run: |
+          delete_log_group="aws logs delete-log-group --log-group-name '${{ env.LOG_GROUP }}' --region \$REGION"
+          sed -i "s#$delete_log_group##g" clean-app-signals.sh
+
+      - name: Clean Up App Signals
+        if: always()
+        continue-on-error: true
+        working-directory: enablement-script/scripts/eks/appsignals
+        run: |
+          ./clean-app-signals.sh \
+          ${{ inputs.test-cluster-name }} \
+          ${{ env.AWS_DEFAULT_REGION }} \
+          ${{ env.SAMPLE_APP_NAMESPACE }}
+
+      # This step also deletes lingering resources from previous test runs
+      - name: Delete all sample app resources
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 10
+        run: kubectl delete namespace ${{ env.SAMPLE_APP_NAMESPACE }}
+
+      - name: Terraform destroy
+        if: always()
+        continue-on-error: true
+        working-directory: terraform/eks
+        run: |
+          terraform destroy -auto-approve \
+            -var="test_id=${{ env.TESTING_ID }}" \
+            -var="aws_region=${{ env.AWS_DEFAULT_REGION }}" \
+            -var="kube_directory_path=${{ github.workspace }}/.kube" \
+            -var="eks_cluster_name=${{ inputs.test-cluster-name }}" \
+            -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
+            -var="service_account_aws_access=service-account-${{ env.TESTING_ID }}" \
+            -var="sample_app_image=${{ env.SAMPLE_APP_IMAGE }}"
+
+      - name: Remove aws access service account
+        if: always()
+        continue-on-error: true
+        run: |
+          eksctl delete iamserviceaccount \
+          --name service-account-${{ env.TESTING_ID }} \
+          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
+          --cluster ${{ inputs.test-cluster-name }} \
+          --region ${{ env.AWS_DEFAULT_REGION }}
