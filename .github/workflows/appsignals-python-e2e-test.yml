@@ -22,8 +22,8 @@ env:
   AWS_DEFAULT_REGION: us-east-1
   TEST_ACCOUNT: ${{ secrets.APP_SIGNALS_E2E_TEST_ACCOUNT_ID }}
   SAMPLE_APP_NAMESPACE: python-sample-app-namespace
-#  SAMPLE_APP_FRONTEND_SERVICE_IMAGE: ${{ secrets.APP_SIGNALS_E2E_SAMPLE_APP_FRONTEND_SVC_IMG }}
-#  SAMPLE_APP_REMOTE_SERVICE_IMAGE: ${{ secrets.APP_SIGNALS_E2E_SAMPLE_APP_REMOTE_SVC_IMG }}
+  APP_SIGNALS_PYTHON_E2E_FE_SA_IMG: appsignals-python-django-main-service
+  APP_SIGNALS_PYTHON_E2E_RE_SA_IMG: appsignals-python-django-remote-service
   METRIC_NAMESPACE: AppSignals
   LOG_GROUP: /aws/appsignals/eks
 #  ECR_OPERATOR_STAGING_IMAGE: ${{ secrets.ECR_OPERATOR_STAGING_IMAGE }}
@@ -148,7 +148,7 @@ jobs:
         with:
           repository: aws-observability/aws-application-signals-test-framework
           ref: main
-          
+
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -167,8 +167,8 @@ jobs:
             -var="eks_cluster_context_name=$(kubectl config current-context)" \
             -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
             -var="service_account_aws_access=service-acc-${{ env.TESTING_ID }}" \
-            -var="python_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ secrets.APP_SIGNALS_PYTHON_E2E_FE_SA_IMG }}" \
-            -var="python_remote_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ secrets.APP_SIGNALS_PYTHON_E2E_RE_SA_IMG }}"
+            -var="python_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ env.APP_SIGNALS_PYTHON_E2E_FE_SA_IMG }}:latest" \
+            -var="python_remote_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ env.APP_SIGNALS_PYTHON_E2E_RE_SA_IMG }}:latest"
 
 #      # Enable App Signals on the test cluster
 #      - name: Enable App Signals
@@ -359,8 +359,8 @@ jobs:
             -var="eks_cluster_name=${{ inputs.test-cluster-name }}" \
             -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
             -var="service_account_aws_access=service-acc-${{ env.TESTING_ID }}" \
-            -var="python_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ secrets.APP_SIGNALS_PYTHON_E2E_FE_SA_IMG }}" \
-            -var="python_remote_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ secrets.APP_SIGNALS_PYTHON_E2E_RE_SA_IMG }}"
+            -var="python_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ env.APP_SIGNALS_PYTHON_E2E_FE_SA_IMG }}:latest" \
+            -var="python_remote_app_image=${{ env.TEST_ACCOUNT }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/${{ env.APP_SIGNALS_PYTHON_E2E_RE_SA_IMG }}:latest"
 
       - name: Remove aws access service account
         if: always()
