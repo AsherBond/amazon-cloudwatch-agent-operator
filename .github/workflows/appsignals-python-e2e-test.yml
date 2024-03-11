@@ -115,13 +115,14 @@ jobs:
       # TODO: This step is used for custom pre-release instrumentation
       # It is a temporary measure until the cw add-on is released with python support
       - name: Edit Helm values for Amazon Cloudwatch Agent Operator
-        working-directory: helm/
+#        working-directory: helm/
         run: |
           echo "HERE!!!!!!!!"
           echo "pwd"
           echo "ls"
           cd ../
           echo "ls"
+          cd amazon-cloudwatch-agent-operator/helm/
           sed -i 's/clusterName:/clusterName: ${{ inputs.test-cluster-name }}/g' values.yaml
           sed -i 's/region:/region: ${{ inputs.aws-region }}/g' values.yaml
           sed -i 's/repository: cloudwatch-agent-operator/repository: cwagent-operator-pre-release/g' values.yaml
