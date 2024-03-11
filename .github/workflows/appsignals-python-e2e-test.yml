@@ -208,7 +208,9 @@ jobs:
           ls
           helm template amazon-cloudwatch-observability ./helm --debug  --include-crds --namespace amazon-cloudwatch | kubectl apply --namespace amazon-cloudwatch --server-side --force-conflicts -f -
 
+          echo "kubectl wait "
           kubectl wait --for=condition=Ready pod --all -n amazon-cloudwatch
+          echo "kubectl delete pods --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}"
           kubectl delete pods --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
           kubectl wait --for=condition=Ready pod --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
           
