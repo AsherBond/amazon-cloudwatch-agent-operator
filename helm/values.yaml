@@ -12,10 +12,10 @@ nameOverride: ""
 imagePullSecrets: [ ]
 
 ## Provide the ClusterName (optional parameter, if not provided, a generated name will be used)
-clusterName:
+clusterName: test-cluster-sample
 
 ## Provide the Region (this is a required parameter)
-region:
+region: us-east-1
 
 gpuNodeLabelKey: node.kubernetes.io/instance-type
 ## NVIDIA GPU instance types
@@ -39,10 +39,10 @@ containerLogs:
 manager:
   name:
   image:
-    repository: cloudwatch-agent-operator
-    tag: 1.0.4
+    repository: cwagent-operator-pre-release
+    tag: latest
     repositoryDomainMap:
-      public: public.ecr.aws/cloudwatch-agent
+      public: 506463145083.dkr.ecr.us-west-2.amazonaws.com
       cn-north-1: 934860584483.dkr.ecr.cn-north-1.amazonaws.com.cn
       cn-northwest-1: 934860584483.dkr.ecr.cn-northwest-1.amazonaws.com.cn
       us-gov-east-1: 743662458514.dkr.ecr.us-gov-east-1.amazonaws.com
@@ -52,19 +52,8 @@ manager:
       repository: public.ecr.aws/aws-observability/adot-autoinstrumentation-java
       tag: v1.31.1
     python:
-      repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python
-      tag: 0.43b0
-  autoAnnotateAutoInstrumentation:
-    java:
-      namespaces: [ ]
-      deployments: [ ]
-      daemonsets: [ ]
-      statefulsets: [ ]
-    python:
-      namespaces: [ ]
-      deployments: [ ]
-      daemonsets: [ ]
-      statefulsets: [ ]
+      repository: 007003802740.dkr.ecr.us-east-2.amazonaws.com/pythonsampleapp/adot-autoinstrumentation-python
+      tag: test25
   ports:
     containerPort: 9443
     metricsPort: 8080
