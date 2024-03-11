@@ -192,9 +192,49 @@ jobs:
 #      - name: Restart the app pods
 #        run: kubectl delete pods --all -n ${{ env.SAMPLE_APP_NAMESPACE }}
 #
-#      - name: Wait for sample app pods to come up
-#        run: |
-#          kubectl wait --for=condition=Ready pod --all -n ${{ env.SAMPLE_APP_NAMESPACE }} \
+      - name: Wait for sample app pods to come up
+        run: |
+          kubectl wait --for=condition=Ready pod --all -n ${{ env.SAMPLE_APP_NAMESPACE }} \
+          
+          echo "Installing app signals to the sample app"
+          
+          echo "1.pwd"
+          pwd
+          echo "ls"
+          ls
+          cd ${{ github.workspace }}/
+          kubectl apply -f namespace.yaml
+          helm template amazon-cloudwatch-observability ./helm --include-crds --namespace amazon-cloudwatch | kubectl apply --namespace amazon-cloudwatch --server-side --force-conflicts -f -
+
+          kubectl wait --for=condition=Ready pod --all -n amazon-cloudwatch
+          kubectl delete pods --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
+          kubectl wait --for=condition=Ready pod --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
+          
+          echo "2.pwd"
+          pwd
+          echo "ls"
+          ls
+          
+          cd ${{ github.workspace }}/amazon-cloudwatch-agent-operator/terraform/python/eks
+          
+          echo "3.pwd"
+          pwd
+          echo "ls"
+          ls
+          
+          # Attach policies to cluster node group roles that are required for AppSignals
+          aws eks list-nodegroups --cluster-name ${{ inputs.test-cluster-name }} --region ${{ inputs.aws-region }} |\
+          jq -r '.nodegroups[]' |\
+          while read -r node_group;
+          do
+            node_role=$(\
+              aws eks describe-nodegroup  --cluster-name ${{ inputs.test-cluster-name }} --nodegroup-name $node_group --region ${{ env.AWS_DEFAULT_REGION }} |\
+              jq -r '.nodegroup.nodeRole' |\
+              cut -d'/' -f2
+            )
+            aws iam attach-role-policy --role-name $node_role --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy --region ${{ env.AWS_DEFAULT_REGION }}
+            aws iam attach-role-policy --role-name $node_role --policy-arn arn:aws:iam::aws:policy/AWSXRayWriteOnlyAccess --region ${{ env.AWS_DEFAULT_REGION }}
+          done
 
       - name: Get remote service deployment name and IP
         run: |
