@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   python-e2e-eks-test:
-    needs: MakeBinary
     uses: ./.github/workflows/appsignals-python-e2e-test.yml
     secrets: inherit
     with:
