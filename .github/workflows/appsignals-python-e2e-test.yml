@@ -210,9 +210,9 @@ jobs:
 
           echo "kubectl wait "
           kubectl wait --for=condition=Ready pod --all -n amazon-cloudwatch
-          echo "kubectl delete pods --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}"
-          kubectl delete pods --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
-          kubectl wait --for=condition=Ready pod --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
+          echo "kubectl delete pods --all -n ${{ env.SAMPLE_APP_NAMESPACE }}"
+          kubectl delete pods --all -n ${{ env.SAMPLE_APP_NAMESPACE }}
+          kubectl wait --for=condition=Ready pod --all -n ${{ env.SAMPLE_APP_NAMESPACE }}
           
           echo "2.pwd"
           pwd
