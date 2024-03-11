@@ -198,16 +198,7 @@ jobs:
           kubectl wait --for=condition=Ready pod --all -n ${{ env.SAMPLE_APP_NAMESPACE }} \
           
           echo "Installing app signals to the sample app"
-#
-#          echo "1.pwd"
-#          pwd
-#          echo "ls"
-#          ls
-#          cd ${{ github.workspace }}/
-#          echo "1.1.pwd"
-#          pwd
-#          echo "ls"
-#          ls
+
           kubectl apply -f namespace.yaml
           helm template amazon-cloudwatch-observability ./helm --include-crds --namespace amazon-cloudwatch | kubectl apply --namespace amazon-cloudwatch --server-side --force-conflicts -f -
 
