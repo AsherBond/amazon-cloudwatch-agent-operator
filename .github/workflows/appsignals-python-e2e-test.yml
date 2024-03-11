@@ -41,14 +41,6 @@ jobs:
           ref: abf75babe672412cb63c56cbcf1c5ce2d8c97a1c
           fetch-depth: 0
 
-      # This step avoids code duplication for terraform templates and the validator
-      # To simplify, we get the entire repo
-      - name: Get testing resources from aws-application-signals-test-framework
-        uses: actions/checkout@v4
-        with:
-          repository: aws-observability/aws-application-signals-test-framework
-          ref: main
-
 #      - name: Download enablement script
 #        uses: actions/checkout@v4
 #        with:
@@ -148,6 +140,15 @@ jobs:
               name: amazon-cloudwatch
           EOF
 
+
+      # This step avoids code duplication for terraform templates and the validator
+      # To simplify, we get the entire repo
+      - name: Get testing resources from aws-application-signals-test-framework
+        uses: actions/checkout@v4
+        with:
+          repository: aws-observability/aws-application-signals-test-framework
+          ref: main
+          
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
         with:
