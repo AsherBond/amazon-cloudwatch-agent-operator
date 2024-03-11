@@ -28,6 +28,7 @@ env:
   LOG_GROUP: /aws/appsignals/eks
 #  ECR_OPERATOR_STAGING_IMAGE: ${{ secrets.ECR_OPERATOR_STAGING_IMAGE }}
 
+
 jobs:
   appsignals-e2e-test:
     runs-on: ubuntu-latest
@@ -119,9 +120,12 @@ jobs:
         run: |
           echo "HERE!!!!!!!!"
           echo "pwd"
+          pwd
           echo "ls"
+          ls
           cd ../
           echo "ls"
+          ls
           cd amazon-cloudwatch-agent-operator/helm/
           sed -i 's/clusterName:/clusterName: ${{ inputs.test-cluster-name }}/g' values.yaml
           sed -i 's/region:/region: ${{ inputs.aws-region }}/g' values.yaml
