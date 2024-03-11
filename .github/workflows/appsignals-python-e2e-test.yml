@@ -236,7 +236,7 @@ jobs:
 
       - name: Get the sample app endpoint
         run: |
-          echo "APP_ENDPOINT=$(terraform output sample_app_endpoint)" >> $GITHUB_ENV
+          echo "APP_ENDPOINT=$(terraform output python_app_endpoint)" >> $GITHUB_ENV
         working-directory: terraform/python/eks
 
       - name: Wait for app endpoint to come online
