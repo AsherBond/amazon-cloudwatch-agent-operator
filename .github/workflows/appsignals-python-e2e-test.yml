@@ -203,6 +203,10 @@ jobs:
           echo "ls"
           ls
           cd ${{ github.workspace }}/
+          echo "1.1.pwd"
+          pwd
+          echo "ls"
+          ls
           kubectl apply -f namespace.yaml
           helm template amazon-cloudwatch-observability ./helm --include-crds --namespace amazon-cloudwatch | kubectl apply --namespace amazon-cloudwatch --server-side --force-conflicts -f -
 
