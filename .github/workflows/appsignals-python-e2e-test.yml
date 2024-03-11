@@ -192,7 +192,7 @@ jobs:
 #      # app signals instrumentation to take effect
 #      - name: Restart the app pods
 #        run: kubectl delete pods --all -n ${{ env.SAMPLE_APP_NAMESPACE }}
-#
+
       - name: Wait for sample app pods to come up
         run: |
           kubectl wait --for=condition=Ready pod --all -n ${{ env.SAMPLE_APP_NAMESPACE }} \
