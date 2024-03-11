@@ -206,7 +206,7 @@ jobs:
           echo "helm apply"
           pwd
           ls
-          helm template amazon-cloudwatch-observability ./helm --include-crds --namespace amazon-cloudwatch | kubectl apply --namespace amazon-cloudwatch --debug --server-side --force-conflicts -f -
+          helm template amazon-cloudwatch-observability ./helm --debug  --include-crds --namespace amazon-cloudwatch | kubectl apply --namespace amazon-cloudwatch --server-side --force-conflicts -f -
 
           kubectl wait --for=condition=Ready pod --all -n amazon-cloudwatch
           kubectl delete pods --all -n ${{ env.PYTHON_SAMPLE_APP_NAMESPACE }}
