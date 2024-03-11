@@ -145,6 +145,7 @@ jobs:
         with:
           repository: aws-observability/aws-application-signals-test-framework
           ref: main
+          path: aws-application-signals-test-framework
 
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
@@ -152,7 +153,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Deploy sample app via terraform
-        working-directory: terraform/python/eks
+        working-directory: aws-application-signals-test-framework/terraform/python/eks
         run: |
           terraform init
           terraform validate
@@ -219,7 +220,7 @@ jobs:
           echo "ls"
           ls
           
-          cd ${{ github.workspace }}/amazon-cloudwatch-agent-operator/terraform/python/eks
+          cd ${{ github.workspace }}/aws-application-signals-test-framework/terraform/python/eks
           
           echo "3.pwd"
           pwd
