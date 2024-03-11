@@ -227,7 +227,7 @@ jobs:
           ls
           
           # Attach policies to cluster node group roles that are required for AppSignals
-          aws eks list-nodegroups --cluster-name ${{ inputs.test-cluster-name }} --region ${{ inputs.aws-region }} |\
+          aws eks list-nodegroups --cluster-name ${{ inputs.test-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }} |\
           jq -r '.nodegroups[]' |\
           while read -r node_group;
           do
