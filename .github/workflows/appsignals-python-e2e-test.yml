@@ -119,7 +119,7 @@ jobs:
           sed -i 's/region:/region: ${{ env.AWS_DEFAULT_REGION }}/g' values.yaml
           sed -i 's/repository: cloudwatch-agent-operator/repository: cwagent-operator-pre-release/g' values.yaml
           sed -i 's/tag: 1.0.2/tag: latest/g' values.yaml
-          sed -i '0,/public: public.ecr.aws\/cloudwatch-agent/s//public: ${{ secrets.TEST_CW_AGENT_REPO }}/' values.yaml
+          sed -i '0,/public: public.ecr.aws\/cloudwatch-agent/s//public: 506463145083.dkr.ecr.us-west-2.amazonaws.com/' values.yaml
           sed -i 's~repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python~repository: public.ecr.aws/aws-observability/adot-autoinstrumentation-python~g' values.yaml
           sed -i 's/tag: 0.43b0/tag: v0.0.1/g' values.yaml
           cat values.yaml
