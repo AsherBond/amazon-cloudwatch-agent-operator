@@ -117,6 +117,11 @@ jobs:
       - name: Edit Helm values for Amazon Cloudwatch Agent Operator
         working-directory: helm/
         run: |
+          echo "HERE!!!!!!!!"
+          echo "pwd"
+          echo "ls"
+          cd ../
+          echo "ls"
           sed -i 's/clusterName:/clusterName: ${{ inputs.test-cluster-name }}/g' values.yaml
           sed -i 's/region:/region: ${{ inputs.aws-region }}/g' values.yaml
           sed -i 's/repository: cloudwatch-agent-operator/repository: cwagent-operator-pre-release/g' values.yaml
