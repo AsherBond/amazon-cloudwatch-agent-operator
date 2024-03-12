@@ -13,6 +13,9 @@ locals {
   role_arn = format("%s%s", module.basic_components.role_arn, var.beta ? "-eks-beta" : "")
   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
 }
+resource "kubernetes_manifest" "this" {
+  manifest = yamldecode(file("integration-tests/java/sample-deployment-java.yaml"))
+}
 
 data "aws_eks_cluster_auth" "this" {
   name = aws_eks_cluster.this.name
