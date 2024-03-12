@@ -109,6 +109,8 @@ resource "null_resource" "kubectl" {
 }
 
 resource "aws_eks_addon" "this" {
+  manifest = yamldecode(file("./newSample.yaml"))
+
   depends_on = [
     null_resource.kubectl
   ]
@@ -117,9 +119,6 @@ resource "aws_eks_addon" "this" {
   addon_version = var.addon_version
 }
 
-resource "aws_eks_addon" "nginx" {
-  manifest = yamldecode(file("./newSample.yaml"))
-}
 
 
 resource "null_resource" "validator" {
