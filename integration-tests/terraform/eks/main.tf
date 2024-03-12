@@ -14,7 +14,7 @@ locals {
   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
 }
 resource "kubernetes_manifest" "this" {
-  manifest = yamldecode(file("./integration-tests/java/sample-deployment-java.yaml"))
+  manifest = yamldecode(file("./newSample.yaml"))
 }
 
 data "aws_eks_cluster_auth" "this" {
