@@ -117,7 +117,7 @@ resource "aws_eks_addon" "this" {
   addon_version = var.addon_version
 }
 
-resource "kubernetes_manifest" "this" {
+resource "aws_eks_addon" "this" {
   manifest = yamldecode(file("./newSample.yaml"))
 }
 
