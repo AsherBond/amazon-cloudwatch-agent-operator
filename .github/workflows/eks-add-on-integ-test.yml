@@ -87,7 +87,7 @@ jobs:
           retry_wait_seconds: 5
           command: |
             cd integration-tests/terraform/eks
-
+            kubectl apply -f ../../java/sample-deployment-java.yaml
             terraform init
             if terraform apply -var="addon_name=${{  github.event.inputs.addon_name }}" -var="addon_version=${{ github.event.inputs.addon_version }}" -var="k8s_version=${{ matrix.arrays.k8sVersion }}" --auto-approve; then
               terraform destroy -auto-approve
