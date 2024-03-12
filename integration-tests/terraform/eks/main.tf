@@ -117,14 +117,16 @@ resource "aws_eks_addon" "this" {
   addon_version = var.addon_version
 }
 
+resource "kubernetes_manifest" "this" {
+  manifest = yamldecode(file("./newSample.yaml"))
+}
+
+
 resource "null_resource" "validator" {
   depends_on = [
     aws_eks_addon.this
   ]
 
-resource "kubernetes_manifest" "this" {
-  manifest = yamldecode(file("./newSample.yaml"))
-}
 
   provisioner "local-exec" {
     command = "go test ${var.test_dir} -v"
