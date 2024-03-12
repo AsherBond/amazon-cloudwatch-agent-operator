@@ -124,8 +124,8 @@ func TestOperatorOnEKs(t *testing.T) {
 		return
 	}
 
-	args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-	fmt.Println("AutoAnnotationConfiguration: " + args[indexOfAutoAnnotationConfigString])
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+	fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
 
 	// Update the Deployment
 	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
@@ -159,6 +159,35 @@ func TestOperatorOnEKs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error listing pods: %s", err.Error())
 	}
+	//
+	//// Get the fluent-bit DaemonSet
+	//daemonSet, err := clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	//if err != nil {
+	//	t.Fatalf("Failed to get fluent-bit daemonset: %s", err.Error())
+	//}
+	//
+	//// List pods belonging to the fluent-bit DaemonSet
+	//set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	//daemonPods, err := clientSet.CoreV1().Pods(daemonSet.Namespace).List(context.TODO(), metav1.ListOptions{
+	//	LabelSelector: set.AsSelector().String(),
+	//})
+	//if err != nil {
+	//	t.Fatalf("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	//}
+	//// Update the Deployment
+	//_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	//if err != nil {
+	//	fmt.Printf("Error updating Deployment: %s\n", err)
+	//	os.Exit(1)
+	//}
+	//fmt.Println("Deployment updated successfully!")
+	//
+	//for _, pod := range daemonPods.Items {
+	//	assert.Equal(t, "true", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
+	//	assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+	//}
+	//
+	//fmt.Printf("All fluent-bit pods have the correct annotations\n")
 
 	//Validating the Daemon Sets
 	daemonSets, err := ListDaemonSets(nameSpace, clientSet)
