@@ -17,14 +17,6 @@ locals {
 data "aws_eks_cluster_auth" "this" {
   name = aws_eks_cluster.this.name
 }
-resource "aws_eks_addon" "this" {
-  depends_on = [
-    null_resource.kubectl
-  ]
-  addon_name   = var.addon_name
-  cluster_name = aws_eks_cluster.this.name
-  addon_version = var.addon_version
-}
 
 resource "aws_eks_cluster" "this" {
   name     = "cwagent-operator-eks-integ-${module.common.testing_id}"
@@ -116,16 +108,24 @@ resource "null_resource" "kubectl" {
   }
 }
 
-
-
-resource "kubernetes_manifest" "this" {
-  manifest = yamldecode(file("./newSample.yaml"))
+resource "aws_eks_addon" "this" {
+  depends_on = [
+    null_resource.kubectl
+  ]
+  addon_name   = var.addon_name
+  cluster_name = aws_eks_cluster.this.name
+  addon_version = var.addon_version
 }
 
 resource "null_resource" "validator" {
   depends_on = [
     aws_eks_addon.this
   ]
+
+resource "kubernetes_manifest" "this" {
+  manifest = yamldecode(file("./newSample.yaml"))
+}
+
   provisioner "local-exec" {
     command = "go test ${var.test_dir} -v"
   }
