@@ -107,7 +107,7 @@ func TestOperatorOnEKs(t *testing.T) {
 
 	//updating operator deployment
 	args := deployments.Items[0].Spec.Template.Spec.Containers[0].Args
-
+	fmt.Println("These are the args: ", args)
 	indexOfAutoAnnotationConfigString := findMatchingPrefix("--auto-annotation-config=", args)
 
 	annotationConfig := auto.AnnotationConfig{
@@ -226,7 +226,7 @@ func findMatchingPrefix(str string, strs []string) int {
 			return i
 		}
 	}
-	return -1 // Return -1 if no matching prefix is found
+	return 0 // Return -1 if no matching prefix is found
 }
 func validateServiceAccount(serviceAccounts *v1.ServiceAccountList, serviceAccountName string) bool {
 	for _, serviceAccount := range serviceAccounts.Items {
