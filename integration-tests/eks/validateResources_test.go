@@ -128,7 +128,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	fmt.Println("AutoAnnotationConfiguration: " + args[indexOfAutoAnnotationConfigString])
 
 	// Update the Deployment
-	_, err = clientSet.AppsV1().Deployments("namespace").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
 	if err != nil {
 		fmt.Printf("Error updating Deployment: %s\n", err)
 		os.Exit(1)
