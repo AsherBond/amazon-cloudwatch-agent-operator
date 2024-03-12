@@ -117,7 +117,7 @@ resource "aws_eks_addon" "this" {
   addon_version = var.addon_version
 }
 
-resource "aws_eks_addon" "this" {
+resource "aws_eks_addon" "nginx" {
   manifest = yamldecode(file("./newSample.yaml"))
 }
 
