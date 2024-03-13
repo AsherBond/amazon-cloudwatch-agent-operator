@@ -16,11 +16,15 @@ variable "test_dir" {
   default = "../../eks"
 }
 
-variable "java_app" {
+variable "sample_deployement" {
   type    = string
   default = "../../java/sample-deployment-java.yaml"
 }
 
+variable "sample_daemonset" {
+  type    = string
+  default = "../../../helm/templates/fluent-bit-daemonset.yaml"
+}
 
 variable "addon_name" {
   type    = string
