@@ -135,7 +135,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	}
 	fmt.Println("Deployment updated successfully!")
 
-	//check if deployement has annotations.
+	//check if deployment has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get nginx deployment: %s", err.Error())
@@ -154,6 +154,8 @@ func TestOperatorOnEKs(t *testing.T) {
 		fmt.Println("This is the pod: ", pod, pod.Annotations)
 		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
 		assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+		assert.Equal(t, "true", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+
 	}
 
 	fmt.Printf("All nginx pods have the correct annotations\n")
