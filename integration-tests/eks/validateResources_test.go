@@ -148,7 +148,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
 			Namespaces:   []string{""},
-			DaemonSets:   []string{"amazon-cloudwatch/fluent-bit"},
+			DaemonSets:   []string{"default/fluent-bit"},
 			Deployments:  []string{""},
 			StatefulSets: []string{""},
 		},
@@ -191,7 +191,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
 			Namespaces:   []string{""},
-			DaemonSets:   []string{"amazon-cloudwatch/fluent-bit"},
+			DaemonSets:   []string{"default/fluent-bit"},
 			Deployments:  []string{"default/nginx"},
 			StatefulSets: []string{""},
 		},
