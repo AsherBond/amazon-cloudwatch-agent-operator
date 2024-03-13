@@ -16,6 +16,12 @@ variable "test_dir" {
   default = "../../eks"
 }
 
+variable "java_app" {
+  type    = string
+  default = "../../java/sample-deployment-java.yaml"
+}
+
+
 variable "addon_name" {
   type    = string
   default = "amazon-cloudwatch-observability"
