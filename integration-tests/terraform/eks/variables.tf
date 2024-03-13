@@ -23,7 +23,7 @@ variable "sample_deployement" {
 
 variable "sample_daemonset" {
   type    = string
-  default = "../../../helm/templates/fluent-bit-daemonset.yaml"
+  default = "./sample_daemonset"
 }
 
 variable "addon_name" {
