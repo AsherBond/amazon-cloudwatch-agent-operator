@@ -78,7 +78,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	//Validating the services
 	services, err := ListServices(nameSpace, clientSet)
 	assert.NoError(t, err)
-	assert.Len(t, services.Items, 4)
+	assert.Len(t, services.Items, 5)
 	for _, service := range services.Items {
 		fmt.Println("service name: " + service.Name + " namespace:" + service.Namespace)
 		// matches
