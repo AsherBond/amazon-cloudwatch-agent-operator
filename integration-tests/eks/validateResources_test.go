@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -31,7 +32,7 @@ const (
 	addOnName        = "amazon-cloudwatch-observability"
 	agentName        = "cloudwatch-agent"
 	podNameRegex     = "(" + agentName + "|" + addOnName + "-controller-manager|fluent-bit)-*"
-	serviceNameRegex = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service"
+	serviceNameRegex = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service|" + "dcgm-exporter"
 )
 
 func TestOperatorOnEKs(t *testing.T) {
@@ -150,6 +151,9 @@ func TestOperatorOnEKs(t *testing.T) {
 		t.Fatalf("Error listing pods for nginx deployment: %s", err.Error())
 	}
 
+	//wait for pods to update
+	time.Sleep(10 * time.Second)
+
 	for _, pod := range deploymentPods.Items {
 		fmt.Println("This is the pod: ", pod, pod.Annotations)
 		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
@@ -203,7 +207,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	//Validating the Daemon Sets
 	daemonSets, err := ListDaemonSets(nameSpace, clientSet)
 	assert.NoError(t, err)
-	assert.Len(t, daemonSets.Items, 2)
+	assert.Len(t, daemonSets.Items, 3)
 	for _, daemonSet := range daemonSets.Items {
 		fmt.Println("daemonSet name: " + daemonSet.Name + " namespace:" + daemonSet.Namespace)
 		// matches
@@ -280,6 +284,29 @@ func TestOperatorOnEKs(t *testing.T) {
 //		fmt.Println("Deployment updated successfully!")
 //
 // }
+
+func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, deploymentName string, timeout time.Duration) error {
+	start := time.Now()
+	for {
+		if time.Since(start) > timeout {
+			return fmt.Errorf("timed out waiting for Deployment readiness")
+		}
+
+		dep, err := clientSet.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if dep.Status.Replicas == dep.Status.ReadyReplicas &&
+			dep.Status.Replicas == dep.Status.UpdatedReplicas &&
+			dep.Status.Replicas == *dep.Spec.Replicas {
+			fmt.Println("Deployment is ready")
+			return nil
+		}
+
+		time.Sleep(10 * time.Second) // Poll interval
+	}
+}
 func findMatchingPrefix(str string, strs []string) int {
 	for i, s := range strs {
 		if strings.HasPrefix(s, str) {
