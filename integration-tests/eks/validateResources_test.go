@@ -124,9 +124,16 @@ func TestOperatorOnEKs(t *testing.T) {
 		fmt.Println("Error:", err)
 		return
 	}
+	//if auto annotation not part of config, we will add it
+	if indexOfAutoAnnotationConfigString == -1 {
+		deployments.Items[0].Spec.Template.Spec.Containers[0].Args = append(deployments.Items[0].Spec.Template.Spec.Containers[0].Args, "--auto-annotation-config="+string(jsonStr))
+		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
 
-	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-	fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+	} else {
+		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+
+	}
 
 	// Update operator Deployment
 	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
@@ -313,7 +320,7 @@ func findMatchingPrefix(str string, strs []string) int {
 			return i
 		}
 	}
-	return 0 // Return -1 if no matching prefix is found
+	return -1 // Return -1 if no matching prefix is found
 }
 func validateServiceAccount(serviceAccounts *v1.ServiceAccountList, serviceAccountName string) bool {
 	for _, serviceAccount := range serviceAccounts.Items {
