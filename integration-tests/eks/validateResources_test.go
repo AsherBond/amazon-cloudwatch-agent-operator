@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -28,11 +29,12 @@ import (
 )
 
 const (
-	nameSpace        = "amazon-cloudwatch"
-	addOnName        = "amazon-cloudwatch-observability"
-	agentName        = "cloudwatch-agent"
-	podNameRegex     = "(" + agentName + "|" + addOnName + "-controller-manager|fluent-bit)-*"
-	serviceNameRegex = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service"
+	nameSpace         = "amazon-cloudwatch"
+	addOnName         = "amazon-cloudwatch-observability"
+	agentName         = "cloudwatch-agent"
+	sampleServiceName = "dcgm-exporter-service"
+	podNameRegex      = "(" + agentName + "|" + addOnName + "-controller-manager|fluent-bit)-*"
+	serviceNameRegex  = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service|" + sampleServiceName
 )
 
 func TestOperatorOnEKs(t *testing.T) {
@@ -139,6 +141,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	}
 	//checking annotations for pods
 	checkAnnotations(deploymentPods, t, "true")
+	time.Sleep(10 * time.Second)
 
 	//--------------------------------------- use case 2 -----------------------------------------------------
 
@@ -295,7 +298,7 @@ func updateDeployment(annotationConfig auto.AnnotationConfig, deployments *v1_2.
 func checkAnnotations(pods *v1.PodList, t *testing.T, trueOrEmpty string) {
 
 	for _, pod := range pods.Items {
-		fmt.Println("This is the pod: ", pod, pod.Annotations)
+		fmt.Printf("This is the pod: %v with its annotation of inject java: %v", pod, pod.Annotations["instrumentation.opentelemetry.io/inject-java"])
 		assert.Equal(t, trueOrEmpty, pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
 	}
 
