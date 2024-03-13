@@ -169,7 +169,33 @@ func TestOperatorOnEKs(t *testing.T) {
 
 	checkAnnotations(daemonPods, t, "true")
 
-	//-------------------------------------------------------------------------------------
+	//-------------------------------------Use Case 3------------------------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{"amazon-cloudwatch/fluent-bit"},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
+		},
+	}
+	updateDeployment(annotationConfig, deployments, clientSet, indexOfAutoAnnotationConfigString)
+	checkAnnotations(deploymentPods, t, "true")
+	checkAnnotations(daemonPods, t, "true")
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	updateDeployment(annotationConfig, deployments, clientSet, indexOfAutoAnnotationConfigString)
+	checkAnnotations(deploymentPods, t, "")
+	checkAnnotations(daemonPods, t, "")
+
+	//-------------------------------------Use Case 3------------------------------------------------
 
 	//Validating the Daemon Sets
 	daemonSets, err := ListDaemonSets(nameSpace, clientSet)
