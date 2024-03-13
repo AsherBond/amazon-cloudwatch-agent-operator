@@ -128,6 +128,11 @@ resource "null_resource" "validator" {
 
 
   provisioner "local-exec" {
-    command = "go test ${var.test_dir} -v"
+   when    = "create"
+      command = <<-EOT
+        ${local.aws_eks} update-kubeconfig --name ${aws_eks_cluster.this.name}
+        kubectl apply -f k8s-deployment.yaml
+        go test ${var.test_dir} -v
+      EOT
   }
 }
