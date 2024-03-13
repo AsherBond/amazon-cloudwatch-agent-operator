@@ -19,6 +19,7 @@ import (
 
 	arv1 "k8s.io/api/admissionregistration/v1"
 	appsV1 "k8s.io/api/apps/v1"
+	v1_2 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacV1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -152,7 +153,6 @@ func TestOperatorOnEKs(t *testing.T) {
 
 	for _, pod := range deploymentPods.Items {
 		fmt.Println("This is the pod: ", pod, pod.Annotations)
-		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
 		assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
 	}
 
@@ -259,25 +259,25 @@ func TestOperatorOnEKs(t *testing.T) {
 	assert.Equal(t, addOnName+"-validating-webhook-configuration", validatingWebhookConfigurations.Items[0].Name)
 }
 
-//	func updateDeployment(annotationConfig auto.AnnotationConfig, deployments *v1.DeploymentList) {
-//		jsonStr, err := json.Marshal(annotationConfig)
-//		if err != nil {
-//			fmt.Println("Error:", err)
-//			return
-//		}
-//
-//		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-//		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
-//
-//		// Update the Deployment
-//		_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-//		if err != nil {
-//			fmt.Printf("Error updating Deployment: %s\n", err)
-//			os.Exit(1)
-//		}
-//		fmt.Println("Deployment updated successfully!")
-//
-// }
+func updateDeployment(annotationConfig auto.AnnotationConfig, deployments *v1_2.DeploymentList, indexOfAutoAnnotationConfigString int) {
+	jsonStr, err := json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+	fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+
+	// Update the Deployment
+	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	if err != nil {
+		fmt.Printf("Error updating Deployment: %s\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Deployment updated successfully!")
+
+}
 func findMatchingPrefix(str string, strs []string) int {
 	for i, s := range strs {
 		if strings.HasPrefix(s, str) {
