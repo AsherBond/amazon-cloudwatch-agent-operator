@@ -109,7 +109,6 @@ resource "null_resource" "kubectl" {
 }
 
 resource "aws_eks_addon" "this" {
-  manifest = yamldecode(file("./newSample.yaml"))
 
   depends_on = [
     null_resource.kubectl
