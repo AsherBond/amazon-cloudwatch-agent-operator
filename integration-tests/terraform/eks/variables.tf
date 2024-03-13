@@ -23,7 +23,7 @@ variable "sample_deployement" {
 
 variable "sample_daemonset" {
   type    = string
-  default = "./sample_daemonset"
+  default = "./sample_daemonset.yaml"
 }
 
 variable "addon_name" {
