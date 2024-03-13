@@ -181,7 +181,7 @@ func TestOperatorOnEKs(t *testing.T) {
 		// - cloudwatch-agent
 		// - fluent-bit
 		if match, _ := regexp.MatchString(agentName+"|fluent-bit", daemonSet.Name); !match {
-			assert.Fail(t, "DaemonSet is created correctly")
+			assert.Fail(t, "DaemonSet is not created correctly")
 		}
 	}
 
