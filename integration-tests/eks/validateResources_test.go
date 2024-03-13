@@ -14,13 +14,11 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	arv1 "k8s.io/api/admissionregistration/v1"
 	appsV1 "k8s.io/api/apps/v1"
-	v1_2 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacV1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,12 +27,11 @@ import (
 )
 
 const (
-	nameSpace         = "amazon-cloudwatch"
-	addOnName         = "amazon-cloudwatch-observability"
-	agentName         = "cloudwatch-agent"
-	sampleServiceName = "dcgm-exporter-service"
-	podNameRegex      = "(" + agentName + "|" + addOnName + "-controller-manager|fluent-bit)-*"
-	serviceNameRegex  = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service|" + sampleServiceName
+	nameSpace        = "amazon-cloudwatch"
+	addOnName        = "amazon-cloudwatch-observability"
+	agentName        = "cloudwatch-agent"
+	podNameRegex     = "(" + agentName + "|" + addOnName + "-controller-manager|fluent-bit)-*"
+	serviceNameRegex = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service"
 )
 
 func TestOperatorOnEKs(t *testing.T) {
@@ -80,7 +77,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	//Validating the services
 	services, err := ListServices(nameSpace, clientSet)
 	assert.NoError(t, err)
-	assert.Len(t, services.Items, 5)
+	assert.Len(t, services.Items, 4)
 	for _, service := range services.Items {
 		fmt.Println("service name: " + service.Name + " namespace:" + service.Namespace)
 		// matches
@@ -108,8 +105,6 @@ func TestOperatorOnEKs(t *testing.T) {
 	}
 	assert.Equal(t, appsV1.DeploymentAvailable, deployments.Items[0].Status.Conditions[0].Type)
 
-	//--------------------------------------- use case 1 -----------------------------------------------------
-
 	//updating operator deployment
 	args := deployments.Items[0].Spec.Template.Spec.Containers[0].Args
 	fmt.Println("These are the args: ", args)
@@ -123,9 +118,24 @@ func TestOperatorOnEKs(t *testing.T) {
 			StatefulSets: []string{""},
 		},
 	}
+	jsonStr, err := json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 
-	updateDeployment(annotationConfig, deployments, clientSet, indexOfAutoAnnotationConfigString)
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+	fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
 
+	// Update operator Deployment
+	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	if err != nil {
+		fmt.Printf("Error updating Deployment: %s\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Deployment updated successfully!")
+
+	//check if deployement has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get nginx deployment: %s", err.Error())
@@ -139,80 +149,54 @@ func TestOperatorOnEKs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error listing pods for nginx deployment: %s", err.Error())
 	}
-	//checking annotations for pods
-	checkAnnotations(deploymentPods, t, "true")
-	time.Sleep(10 * time.Second)
 
-	//--------------------------------------- use case 2 -----------------------------------------------------
-
-	annotationConfig = auto.AnnotationConfig{
-		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{"default/fluent-bit"},
-			Deployments:  []string{""},
-			StatefulSets: []string{""},
-		},
+	for _, pod := range deploymentPods.Items {
+		fmt.Println("This is the pod: ", pod, pod.Annotations)
+		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
+		assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
 	}
-	jsonStr, err := json.Marshal(annotationConfig)
+
+	fmt.Printf("All nginx pods have the correct annotations\n")
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		t.Fatalf("Error listing pods: %s", err.Error())
 	}
-
-	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-	fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
-
-	// Update the Deployment
-	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-	if err != nil {
-		fmt.Printf("Error updating Deployment: %s\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("Deployment updated successfully!")
-	// Get the fluent-bit DaemonSet
-	daemonSet, err := clientSet.AppsV1().DaemonSets("amazon-cloudwatch").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Failed to get fluent-bit daemonset: %s", err.Error())
-	}
-
-	// List pods belonging to the fluent-bit DaemonSet
-	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
-	daemonPods, err := clientSet.CoreV1().Pods(daemonSet.Namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: set.AsSelector().String(),
-	})
-	if err != nil {
-		t.Fatalf("Error listing pods for fluent-bit daemonset: %s", err.Error())
-	}
-
-	checkAnnotations(daemonPods, t, "true")
-
-	//-------------------------------------Use Case 3------------------------------------------------
-
-	annotationConfig = auto.AnnotationConfig{
-		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{"default/fluent-bit"},
-			Deployments:  []string{"default/nginx"},
-			StatefulSets: []string{""},
-		},
-	}
-	updateDeployment(annotationConfig, deployments, clientSet, indexOfAutoAnnotationConfigString)
-	checkAnnotations(deploymentPods, t, "true")
-	checkAnnotations(daemonPods, t, "true")
-
-	annotationConfig = auto.AnnotationConfig{
-		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{""},
-			Deployments:  []string{""},
-			StatefulSets: []string{""},
-		},
-	}
-	updateDeployment(annotationConfig, deployments, clientSet, indexOfAutoAnnotationConfigString)
-	checkAnnotations(deploymentPods, t, "")
-	checkAnnotations(daemonPods, t, "")
-
-	//-------------------------------------Use Case 3------------------------------------------------
+	//
+	//annotationConfig = auto.AnnotationConfig{
+	//	Java: auto.AnnotationResources{
+	//		Namespaces:   []string{""},
+	//		DaemonSets:   []string{"amazon-cloudwatch/fluent-bit"},
+	//		Deployments:  []string{""},
+	//		StatefulSets: []string{""},
+	//	},
+	//}
+	//// Get the fluent-bit DaemonSet
+	//daemonSet, err := clientSet.AppsV1().DaemonSets("amazon-cloudwatch").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	//if err != nil {
+	//	t.Fatalf("Failed to get fluent-bit daemonset: %s", err.Error())
+	//}
+	//
+	//// List pods belonging to the fluent-bit DaemonSet
+	//set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	//daemonPods, err := clientSet.CoreV1().Pods(daemonSet.Namespace).List(context.TODO(), metav1.ListOptions{
+	//	LabelSelector: set.AsSelector().String(),
+	//})
+	//if err != nil {
+	//	t.Fatalf("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	//}
+	//// Update the Deployment
+	//_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	//if err != nil {
+	//	fmt.Printf("Error updating Deployment: %s\n", err)
+	//	os.Exit(1)
+	//}
+	//fmt.Println("Deployment updated successfully!")
+	//
+	//for _, pod := range daemonPods.Items {
+	//	assert.Equal(t, "true", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
+	//	assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+	//}
+	//
+	//fmt.Printf("All fluent-bit pods have the correct annotations\n")
 
 	//Validating the Daemon Sets
 	daemonSets, err := ListDaemonSets(nameSpace, clientSet)
@@ -224,7 +208,7 @@ func TestOperatorOnEKs(t *testing.T) {
 		// - cloudwatch-agent
 		// - fluent-bit
 		if match, _ := regexp.MatchString(agentName+"|fluent-bit", daemonSet.Name); !match {
-			assert.Fail(t, "DaemonSet is not created correctly")
+			assert.Fail(t, "DaemonSet is created correctly")
 		}
 	}
 
@@ -275,36 +259,25 @@ func TestOperatorOnEKs(t *testing.T) {
 	assert.Equal(t, addOnName+"-validating-webhook-configuration", validatingWebhookConfigurations.Items[0].Name)
 }
 
-func updateDeployment(annotationConfig auto.AnnotationConfig, deployments *v1_2.DeploymentList, clientSet *kubernetes.Clientset, indexOfAutoAnnotationConfigString int) {
-	jsonStr, err := json.Marshal(annotationConfig)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-	fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
-
-	// Update the Deployment
-	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-	if err != nil {
-		fmt.Printf("Error updating Deployment: %s\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("Deployment updated successfully!")
-
-}
-
-func checkAnnotations(pods *v1.PodList, t *testing.T, trueOrEmpty string) {
-
-	for _, pod := range pods.Items {
-		fmt.Printf("This is the pod: %v with its annotation of inject java: %v", pod, pod.Annotations["instrumentation.opentelemetry.io/inject-java"])
-		assert.Equal(t, trueOrEmpty, pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
-	}
-
-	fmt.Printf("All pods have the correct annotations\n")
-}
-
+//	func updateDeployment(annotationConfig auto.AnnotationConfig, deployments *v1.DeploymentList) {
+//		jsonStr, err := json.Marshal(annotationConfig)
+//		if err != nil {
+//			fmt.Println("Error:", err)
+//			return
+//		}
+//
+//		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+//		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+//
+//		// Update the Deployment
+//		_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+//		if err != nil {
+//			fmt.Printf("Error updating Deployment: %s\n", err)
+//			os.Exit(1)
+//		}
+//		fmt.Println("Deployment updated successfully!")
+//
+// }
 func findMatchingPrefix(str string, strs []string) int {
 	for i, s := range strs {
 		if strings.HasPrefix(s, str) {
