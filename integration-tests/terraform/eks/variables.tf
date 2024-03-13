@@ -16,7 +16,7 @@ variable "test_dir" {
   default = "../../eks"
 }
 
-variable "sample_deployement" {
+variable "sample_deployment" {
   type    = string
   default = "../../java/sample-deployment-java.yaml"
 }
