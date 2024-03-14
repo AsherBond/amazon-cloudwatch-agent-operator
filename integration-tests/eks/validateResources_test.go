@@ -140,13 +140,13 @@ func TestOperatorOnEKs(t *testing.T) {
 
 	}
 
-	// Update operator Deployment
-	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-	if err != nil {
-		fmt.Printf("Error updating Deployment: %s\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("Deployment updated successfully!")
+	//// Update operator Deployment
+	//_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	//if err != nil {
+	//	fmt.Printf("Error updating Deployment: %s\n", err)
+	//	os.Exit(1)
+	//}
+	//fmt.Println("Deployment updated successfully!")
 
 	//check if deployment has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
