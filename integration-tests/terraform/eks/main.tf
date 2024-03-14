@@ -132,10 +132,12 @@ resource "null_resource" "validator" {
         ${local.aws_eks} update-kubeconfig --name ${aws_eks_cluster.this.name}
         kubectl apply -f ${var.sample_deployment}
         kubectl get pods -A
-        kubectl describe pods
+        kubectl describe pods -n default
+        kubectl describe pods -n amazon-cloudwatch
         go test ${var.test_dir} -v
         kubectl get pods -A
-        kubectl describe pods
+        kubectl describe pods -n default
+        kubectl describe pods -n amazon-cloudwatch
       EOT
   }
 }
