@@ -169,9 +169,11 @@ func TestOperatorOnEKs(t *testing.T) {
 	for _, pod := range deploymentPods.Items {
 		fmt.Println("This is the pod: ", pod, pod.ObjectMeta.Annotations)
 
-		fmt.Printf("This is the key: %v, this is value: %v", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
-		fmt.Printf("This is the key: %v, this is value: %v", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
+		fmt.Printf("This is the key: %v, this is value: %v\n", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
+		fmt.Printf("This is the key: %v, this is value: %v\n", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
 
+		argMap, _ := getPodAnnotationVariables(clientSet, pod.Name, "default")
+		fmt.Println("This is the argMap: ", argMap)
 		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
 		assert.Equal(t, "", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
 		assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
@@ -330,15 +332,15 @@ func getPodAnnotationVariables(clientset *kubernetes.Clientset, podName, namespa
 		return nil, err
 	}
 
-	envMap := make(map[string]string)
+	argMap := make(map[string]string)
 
 	for _, container := range pod.Spec.Containers {
-		for _, envVar := range container.Env {
-			envMap[envVar.Name] = envVar.Value
+		for _, argVar := range container.Args {
+			argMap[argVar] = argVar
 		}
 	}
 
-	return envMap, nil
+	return argMap, nil
 }
 func findMatchingPrefix(str string, strs []string) int {
 	for i, s := range strs {
