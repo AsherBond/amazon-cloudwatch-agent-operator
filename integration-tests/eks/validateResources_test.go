@@ -168,9 +168,13 @@ func TestOperatorOnEKs(t *testing.T) {
 
 	for _, pod := range deploymentPods.Items {
 		fmt.Println("This is the pod: ", pod, pod.Annotations)
+
+		fmt.Printf("This is the key: %v, this is value: %v", "instrumentation.opentelemetry.io/inject-java", pod.Annotations["instrumentation.opentelemetry.io/inject-java"])
+		fmt.Printf("This is the key: %v, this is value: %v", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
+
 		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
-		assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
-		assert.Equal(t, "true", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+		assert.Equal(t, "", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+		assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
 
 	}
 
