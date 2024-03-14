@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 func main() {
@@ -49,14 +48,7 @@ func main() {
 		fmt.Println("Instrumentation Annotation Injection Test: PASS")
 	}
 }
-func findMatchingPrefix(str string, strs []string) int {
-	for i, s := range strs {
-		if strings.HasPrefix(s, str) {
-			return i
-		}
-	}
-	return -1 // Return -1 if no matching prefix is found
-}
+
 func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kubernetes.Clientset) bool {
 
 	//updating operator deployment
@@ -78,28 +70,12 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 		return false
 	}
 
-	fmt.Println("This is hte index of annotation: ", indexOfAutoAnnotationConfigString)
-	//if auto annotation not part of config, we will add it
-	if indexOfAutoAnnotationConfigString < 0 || indexOfAutoAnnotationConfigString >= len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
-		fmt.Println("We are in the if statement")
-		deployments.Items[0].Spec.Template.Spec.Containers[0].Args = append(deployments.Items[0].Spec.Template.Spec.Containers[0].Args, "--auto-annotation-config="+string(jsonStr))
-		indexOfAutoAnnotationConfigString = len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) - 1
-		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
-		fmt.Println("This is the updated index of annotation: ", indexOfAutoAnnotationConfigString)
-	} else {
-		fmt.Println("We are in the else statement")
-		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
-
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	indexOfAutoAnnotationConfigString = getIndexofAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
+	fmt.Println("This is the index of annotation: ", indexOfAutoAnnotationConfigString)
+	if !updateOperator(clientSet, deployments) {
+		return false
 	}
-
-	// Update operator Deployment
-	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-	if err != nil {
-		fmt.Printf("Error updating Deployment: %s\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("Deployment updated successfully!")
 
 	//check if deployment has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
@@ -119,13 +95,19 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 
 	//wait for pods to update
-	time.Sleep(10 * time.Second)
+	//time.Sleep(1 * time.Second)
 
 	for _, pod := range deploymentPods.Items {
 		fmt.Println("This is the pod: ", pod, pod.ObjectMeta.Annotations)
 
 		fmt.Printf("This is the key: %v, this is value: %v\n", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
-		fmt.Printf("This is the key: %v, this is value: %v\n", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
+
+		if pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
+			return false
+		}
+		if pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"] != "true" {
+			return false
+		}
 
 	}
 
@@ -173,6 +155,27 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	return true
 }
 
+func updateOperator(clientSet *kubernetes.Clientset, deployments *appsV1.DeploymentList) bool {
+
+	// Update operator Deployment
+	_, err := clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	if err != nil {
+		fmt.Printf("Error updating Deployment: %s\n", err)
+		return false
+	}
+	fmt.Println("Deployment updated successfully!")
+	return true
+}
+func verifyHasAnnotations(annotations map[string]string) bool {
+
+	if annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
+		return false
+	}
+	if annotations["cloudwatch.aws.amazon.com/auto-annotate-java"] != "true" {
+		return false
+	}
+	return true
+}
 func GetNameSpace(namespace string, client kubernetes.Interface) (*v1.Namespace, error) {
 	ns, err := client.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
 	if err != nil {
@@ -191,6 +194,21 @@ func ListServices(namespace string, client kubernetes.Interface) (*v1.ServiceLis
 	return namespaces, nil
 }
 
+func getIndexofAnnotationConfig(indexOfAutoAnnotationConfigString int, deployments *appsV1.DeploymentList, jsonStr string) int {
+	//if auto annotation not part of config, we will add it
+	if indexOfAutoAnnotationConfigString < 0 || indexOfAutoAnnotationConfigString >= len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		fmt.Println("We are in the if statement")
+		deployments.Items[0].Spec.Template.Spec.Containers[0].Args = append(deployments.Items[0].Spec.Template.Spec.Containers[0].Args, "--auto-annotation-config="+jsonStr)
+		indexOfAutoAnnotationConfigString = len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) - 1
+		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+		fmt.Println("This is the updated index of annotation: ", indexOfAutoAnnotationConfigString)
+	} else {
+		fmt.Println("We are in the else statement")
+		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + jsonStr
+		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+	}
+	return indexOfAutoAnnotationConfigString
+}
 func ListDeployments(namespace string, client kubernetes.Interface) (*appsV1.DeploymentList, error) {
 	deployments, err := client.AppsV1().Deployments(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -207,4 +225,13 @@ func ListDaemonSets(namespace string, client kubernetes.Interface) (*appsV1.Daem
 		return nil, err
 	}
 	return daemonSets, nil
+}
+
+func findMatchingPrefix(str string, strs []string) int {
+	for i, s := range strs {
+		if strings.HasPrefix(s, str) {
+			return i
+		}
+	}
+	return -1 // Return -1 if no matching prefix is found
 }
