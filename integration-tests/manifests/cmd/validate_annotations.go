@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -71,11 +72,12 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
-	indexOfAutoAnnotationConfigString = getIndexofAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
+	indexOfAutoAnnotationConfigString = updateAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
 	fmt.Println("This is the index of annotation: ", indexOfAutoAnnotationConfigString)
 	if !updateOperator(clientSet, deployments) {
 		return false
 	}
+	time.Sleep(10 * time.Second)
 
 	//check if deployment has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
@@ -95,63 +97,50 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 
 	//wait for pods to update
-	//time.Sleep(1 * time.Second)
 
-	for _, pod := range deploymentPods.Items {
-		fmt.Println("This is the pod: ", pod, pod.ObjectMeta.Annotations)
-
-		fmt.Printf("This is the key: %v, this is value: %v\n", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
-
-		if pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
-			return false
-		}
-		if pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"] != "true" {
-			return false
-		}
-
+	if !checkIfAnnotationsExist(deploymentPods) {
+		return false
 	}
 
-	fmt.Printf("All nginx pods have the correct annotations\n")
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{"default/fluent-bit"},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
 	if err != nil {
-		fmt.Println("Error listing pods: %s", err.Error())
+		fmt.Println("Error:", err)
+		return false
 	}
-	//
-	//annotationConfig = auto.AnnotationConfig{
-	//	Java: auto.AnnotationResources{
-	//		Namespaces:   []string{""},
-	//		DaemonSets:   []string{"amazon-cloudwatch/fluent-bit"},
-	//		Deployments:  []string{""},
-	//		StatefulSets: []string{""},
-	//	},
-	//}
-	//// Get the fluent-bit DaemonSet
-	//daemonSet, err := clientSet.AppsV1().DaemonSets("amazon-cloudwatch").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
-	//if err != nil {
-	//	t.Fatalf("Failed to get fluent-bit daemonset: %s", err.Error())
-	//}
-	//
-	//// List pods belonging to the fluent-bit DaemonSet
-	//set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
-	//daemonPods, err := clientSet.CoreV1().Pods(daemonSet.Namespace).List(context.TODO(), metav1.ListOptions{
-	//	LabelSelector: set.AsSelector().String(),
-	//})
-	//if err != nil {
-	//	t.Fatalf("Error listing pods for fluent-bit daemonset: %s", err.Error())
-	//}
-	//// Update the Deployment
-	//_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-	//if err != nil {
-	//	fmt.Printf("Error updating Deployment: %s\n", err)
-	//	os.Exit(1)
-	//}
-	//fmt.Println("Deployment updated successfully!")
-	//
-	//for _, pod := range daemonPods.Items {
-	//	assert.Equal(t, "true", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
-	//	assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
-	//}
-	//
-	//fmt.Printf("All fluent-bit pods have the correct annotations\n")
+	indexOfAutoAnnotationConfigString = updateAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
+	if !updateOperator(clientSet, deployments) {
+		fmt.Println("kasjdfkls")
+		return false
+	}
+	time.Sleep(10 * time.Second)
+
+	// Get the fluent-bit DaemonSet
+	daemonSet, err := clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get fluent-bit daemonset: %s", err.Error())
+	}
+
+	// List pods belonging to the fluent-bit DaemonSet
+	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	daemonPods, err := clientSet.CoreV1().Pods("amazon-cloudwatch").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	}
+
+	if !checkIfAnnotationsExist(daemonPods) {
+		return false
+	}
+	fmt.Printf("All fluent-bit pods have the correct annotations\n")
 	return true
 }
 
@@ -166,14 +155,22 @@ func updateOperator(clientSet *kubernetes.Clientset, deployments *appsV1.Deploym
 	fmt.Println("Deployment updated successfully!")
 	return true
 }
-func verifyHasAnnotations(annotations map[string]string) bool {
 
-	if annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
-		return false
+func checkIfAnnotationsExist(deploymentPods *v1.PodList) bool {
+	for _, pod := range deploymentPods.Items {
+
+		fmt.Printf("This is the key: %v, this is value: %v\n", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
+
+		if pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
+			return false
+		}
+		if pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"] != "true" {
+			return false
+		}
+
 	}
-	if annotations["cloudwatch.aws.amazon.com/auto-annotate-java"] != "true" {
-		return false
-	}
+
+	fmt.Printf("All nginx pods have the correct annotations\n")
 	return true
 }
 func GetNameSpace(namespace string, client kubernetes.Interface) (*v1.Namespace, error) {
@@ -194,7 +191,7 @@ func ListServices(namespace string, client kubernetes.Interface) (*v1.ServiceLis
 	return namespaces, nil
 }
 
-func getIndexofAnnotationConfig(indexOfAutoAnnotationConfigString int, deployments *appsV1.DeploymentList, jsonStr string) int {
+func updateAnnotationConfig(indexOfAutoAnnotationConfigString int, deployments *appsV1.DeploymentList, jsonStr string) int {
 	//if auto annotation not part of config, we will add it
 	if indexOfAutoAnnotationConfigString < 0 || indexOfAutoAnnotationConfigString >= len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		fmt.Println("We are in the if statement")
