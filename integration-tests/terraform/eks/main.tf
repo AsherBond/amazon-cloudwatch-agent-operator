@@ -131,7 +131,11 @@ resource "null_resource" "validator" {
       command = <<-EOT
         ${local.aws_eks} update-kubeconfig --name ${aws_eks_cluster.this.name}
         kubectl apply -f ${var.sample_deployment}
+        kubectl get pods -A
+        kubectl describe pods
         go test ${var.test_dir} -v
+        kubectl get pods -A
+        kubectl describe pods
       EOT
   }
 }
