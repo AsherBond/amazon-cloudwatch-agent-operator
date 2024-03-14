@@ -167,10 +167,10 @@ func TestOperatorOnEKs(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	for _, pod := range deploymentPods.Items {
-		fmt.Println("This is the pod: ", pod, pod.Annotations)
+		fmt.Println("This is the pod: ", pod, pod.ObjectMeta.Annotations)
 
-		fmt.Printf("This is the key: %v, this is value: %v", "instrumentation.opentelemetry.io/inject-java", pod.Annotations["instrumentation.opentelemetry.io/inject-java"])
-		fmt.Printf("This is the key: %v, this is value: %v", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
+		fmt.Printf("This is the key: %v, this is value: %v", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
+		fmt.Printf("This is the key: %v, this is value: %v", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
 
 		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
 		assert.Equal(t, "", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
@@ -322,6 +322,23 @@ func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, d
 
 		time.Sleep(10 * time.Second) // Poll interval
 	}
+}
+
+func getPodAnnotationVariables(clientset *kubernetes.Clientset, podName, namespace string) (map[string]string, error) {
+	pod, err := clientset.CoreV1().Pods("default").Get(context.TODO(), podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	envMap := make(map[string]string)
+
+	for _, container := range pod.Spec.Containers {
+		for _, envVar := range container.Env {
+			envMap[envVar.Name] = envVar.Value
+		}
+	}
+
+	return envMap, nil
 }
 func findMatchingPrefix(str string, strs []string) int {
 	for i, s := range strs {
