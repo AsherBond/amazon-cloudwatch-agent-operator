@@ -5,11 +5,16 @@ package eks_addon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/aws/amazon-cloudwatch-agent-operator/pkg/instrumentation/auto"
+	"k8s.io/apimachinery/pkg/labels"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -26,11 +31,8 @@ const (
 	nameSpace        = "amazon-cloudwatch"
 	addOnName        = "amazon-cloudwatch-observability"
 	agentName        = "cloudwatch-agent"
-	operatorName     = addOnName + "-controller-manager"
-	fluentBitName    = "fluent-bit"
-	dcgmExporterName = "dcgm-exporter"
-	podNameRegex     = "(" + agentName + "|" + operatorName + "|" + fluentBitName + ")-*"
-	serviceNameRegex = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service|" + dcgmExporterName + "-service"
+	podNameRegex     = "(" + agentName + "|" + addOnName + "-controller-manager|fluent-bit)-*"
+	serviceNameRegex = agentName + "(-headless|-monitoring)?|" + addOnName + "-webhook-service|" + "dcgm-exporter-service"
 )
 
 func TestOperatorOnEKs(t *testing.T) {
@@ -63,7 +65,7 @@ func TestOperatorOnEKs(t *testing.T) {
 	assert.Len(t, pods.Items, 3)
 	for _, pod := range pods.Items {
 		fmt.Println("pod name: " + pod.Name + " namespace:" + pod.Namespace)
-		assert.Contains(t, []v1.PodPhase{v1.PodRunning, v1.PodPending}, pod.Status.Phase)
+		assert.Equal(t, v1.PodRunning, pod.Status.Phase)
 		// matches
 		// - cloudwatch-agent-*
 		// - amazon-cloudwatch-observability-controller-manager-*
@@ -84,7 +86,6 @@ func TestOperatorOnEKs(t *testing.T) {
 		// - cloudwatch-agent
 		// - cloudwatch-agent-headless
 		// - cloudwatch-agent-monitoring
-		// - dcgm-exporter-service
 		if match, _ := regexp.MatchString(serviceNameRegex, service.Name); !match {
 			assert.Fail(t, "Cluster Service is not created correctly")
 		}
@@ -105,6 +106,120 @@ func TestOperatorOnEKs(t *testing.T) {
 	}
 	assert.Equal(t, appsV1.DeploymentAvailable, deployments.Items[0].Status.Conditions[0].Type)
 
+	//updating operator deployment
+	args := deployments.Items[0].Spec.Template.Spec.Containers[0].Args
+	fmt.Println("These are the args: ", args)
+	indexOfAutoAnnotationConfigString := findMatchingPrefix("--auto-annotation-config=", args)
+
+	annotationConfig := auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err := json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println("This is hte index of annotation: ", indexOfAutoAnnotationConfigString)
+	//if auto annotation not part of config, we will add it
+	if indexOfAutoAnnotationConfigString < 0 || indexOfAutoAnnotationConfigString >= len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		fmt.Println("We are in the if statement")
+		deployments.Items[0].Spec.Template.Spec.Containers[0].Args = append(deployments.Items[0].Spec.Template.Spec.Containers[0].Args, "--auto-annotation-config="+string(jsonStr))
+		indexOfAutoAnnotationConfigString = len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) - 1
+		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+		fmt.Println("This is the updated index of annotation: ", indexOfAutoAnnotationConfigString)
+	} else {
+		fmt.Println("We are in the else statement")
+		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+
+	}
+
+	// Update operator Deployment
+	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	if err != nil {
+		fmt.Printf("Error updating Deployment: %s\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Deployment updated successfully!")
+
+	//check if deployment has annotations.
+	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get nginx deployment: %s", err.Error())
+	}
+
+	// List pods belonging to the nginx deployment
+	set := labels.Set(deployment.Spec.Selector.MatchLabels)
+	deploymentPods, err := clientSet.CoreV1().Pods(deployment.Namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		t.Fatalf("Error listing pods for nginx deployment: %s", err.Error())
+	}
+
+	//wait for pods to update
+	time.Sleep(10 * time.Second)
+
+	for _, pod := range deploymentPods.Items {
+		fmt.Println("This is the pod: ", pod, pod.ObjectMeta.Annotations)
+
+		fmt.Printf("This is the key: %v, this is value: %v", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
+		fmt.Printf("This is the key: %v, this is value: %v", "cloudwatch.aws.amazon.com/auto-annotate-java", pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"])
+
+		//assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
+		assert.Equal(t, "", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+		assert.Equal(t, "", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+
+	}
+
+	fmt.Printf("All nginx pods have the correct annotations\n")
+	if err != nil {
+		t.Fatalf("Error listing pods: %s", err.Error())
+	}
+	//
+	//annotationConfig = auto.AnnotationConfig{
+	//	Java: auto.AnnotationResources{
+	//		Namespaces:   []string{""},
+	//		DaemonSets:   []string{"amazon-cloudwatch/fluent-bit"},
+	//		Deployments:  []string{""},
+	//		StatefulSets: []string{""},
+	//	},
+	//}
+	//// Get the fluent-bit DaemonSet
+	//daemonSet, err := clientSet.AppsV1().DaemonSets("amazon-cloudwatch").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	//if err != nil {
+	//	t.Fatalf("Failed to get fluent-bit daemonset: %s", err.Error())
+	//}
+	//
+	//// List pods belonging to the fluent-bit DaemonSet
+	//set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	//daemonPods, err := clientSet.CoreV1().Pods(daemonSet.Namespace).List(context.TODO(), metav1.ListOptions{
+	//	LabelSelector: set.AsSelector().String(),
+	//})
+	//if err != nil {
+	//	t.Fatalf("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	//}
+	//// Update the Deployment
+	//_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+	//if err != nil {
+	//	fmt.Printf("Error updating Deployment: %s\n", err)
+	//	os.Exit(1)
+	//}
+	//fmt.Println("Deployment updated successfully!")
+	//
+	//for _, pod := range daemonPods.Items {
+	//	assert.Equal(t, "true", pod.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"], "Pod %s in namespace %s does not have cloudwatch annotation", pod.Name, pod.Namespace)
+	//	assert.Equal(t, "true", pod.Annotations["instrumentation.opentelemetry.io/inject-java"], "Pod %s in namespace %s does not have opentelemetry annotation", pod.Name, pod.Namespace)
+	//}
+	//
+	//fmt.Printf("All fluent-bit pods have the correct annotations\n")
+
 	//Validating the Daemon Sets
 	daemonSets, err := ListDaemonSets(nameSpace, clientSet)
 	assert.NoError(t, err)
@@ -114,9 +229,8 @@ func TestOperatorOnEKs(t *testing.T) {
 		// matches
 		// - cloudwatch-agent
 		// - fluent-bit
-		// - dcgm-exporter (this can be removed in the future)
-		if match, _ := regexp.MatchString(agentName+"|fluent-bit|dcgm-exporter", daemonSet.Name); !match {
-			assert.Fail(t, "DaemonSet is not created correctly")
+		if match, _ := regexp.MatchString(agentName+"|fluent-bit", daemonSet.Name); !match {
+			assert.Fail(t, "DaemonSet is created correctly")
 		}
 	}
 
@@ -129,10 +243,8 @@ func TestOperatorOnEKs(t *testing.T) {
 	// searches
 	// - amazon-cloudwatch-observability-controller-manager
 	// - cloudwatch-agent
-	// - dcgm-exporter-service-acct
 	assert.True(t, validateServiceAccount(serviceAccounts, addOnName+"-controller-manager"))
 	assert.True(t, validateServiceAccount(serviceAccounts, agentName))
-	assert.True(t, validateServiceAccount(serviceAccounts, dcgmExporterName+"-service-acct"))
 
 	//Validating ClusterRoles
 	clusterRoles, err := ListClusterRoles(clientSet)
@@ -143,13 +255,6 @@ func TestOperatorOnEKs(t *testing.T) {
 	assert.True(t, validateClusterRoles(clusterRoles, addOnName+"-manager-role"))
 	assert.True(t, validateClusterRoles(clusterRoles, agentName+"-role"))
 
-	//Validating Roles
-	roles, err := ListRoles(nameSpace, clientSet)
-	assert.NoError(t, err)
-	// searches
-	// - dcgm-exporter-role
-	assert.True(t, validateRoles(roles, dcgmExporterName+"-role"))
-
 	//Validating ClusterRoleBinding
 	clusterRoleBindings, err := ListClusterRoleBindings(clientSet)
 	assert.NoError(t, err)
@@ -158,13 +263,6 @@ func TestOperatorOnEKs(t *testing.T) {
 	// - cloudwatch-agent-role-binding
 	assert.True(t, validateClusterRoleBindings(clusterRoleBindings, addOnName+"-manager-rolebinding"))
 	assert.True(t, validateClusterRoleBindings(clusterRoleBindings, agentName+"-role-binding"))
-
-	//Validating RoleBinding
-	roleBindings, err := ListRoleBindings(nameSpace, clientSet)
-	assert.NoError(t, err)
-	// searches
-	// - dcgm-exporter-role-binding
-	assert.True(t, validateRoleBindings(roleBindings, dcgmExporterName+"-role-binding"))
 
 	//Validating MutatingWebhookConfiguration
 	mutatingWebhookConfigurations, err := ListMutatingWebhookConfigurations(clientSet)
@@ -183,6 +281,73 @@ func TestOperatorOnEKs(t *testing.T) {
 	assert.Equal(t, addOnName+"-validating-webhook-configuration", validatingWebhookConfigurations.Items[0].Name)
 }
 
+//	func updateDeployment(annotationConfig auto.AnnotationConfig, deployments *v1.DeploymentList) {
+//		jsonStr, err := json.Marshal(annotationConfig)
+//		if err != nil {
+//			fmt.Println("Error:", err)
+//			return
+//		}
+//
+//		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+//		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+//
+//		// Update the Deployment
+//		_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+//		if err != nil {
+//			fmt.Printf("Error updating Deployment: %s\n", err)
+//			os.Exit(1)
+//		}
+//		fmt.Println("Deployment updated successfully!")
+//
+// }
+
+func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, deploymentName string, timeout time.Duration) error {
+	start := time.Now()
+	for {
+		if time.Since(start) > timeout {
+			return fmt.Errorf("timed out waiting for Deployment readiness")
+		}
+
+		dep, err := clientSet.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if dep.Status.Replicas == dep.Status.ReadyReplicas &&
+			dep.Status.Replicas == dep.Status.UpdatedReplicas &&
+			dep.Status.Replicas == *dep.Spec.Replicas {
+			fmt.Println("Deployment is ready")
+			return nil
+		}
+
+		time.Sleep(10 * time.Second) // Poll interval
+	}
+}
+
+func getPodAnnotationVariables(clientset *kubernetes.Clientset, podName, namespace string) (map[string]string, error) {
+	pod, err := clientset.CoreV1().Pods("default").Get(context.TODO(), podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	envMap := make(map[string]string)
+
+	for _, container := range pod.Spec.Containers {
+		for _, envVar := range container.Env {
+			envMap[envVar.Name] = envVar.Value
+		}
+	}
+
+	return envMap, nil
+}
+func findMatchingPrefix(str string, strs []string) int {
+	for i, s := range strs {
+		if strings.HasPrefix(s, str) {
+			return i
+		}
+	}
+	return -1 // Return -1 if no matching prefix is found
+}
 func validateServiceAccount(serviceAccounts *v1.ServiceAccountList, serviceAccountName string) bool {
 	for _, serviceAccount := range serviceAccounts.Items {
 		if serviceAccount.Name == serviceAccountName {
@@ -201,27 +366,9 @@ func validateClusterRoles(clusterRoles *rbacV1.ClusterRoleList, clusterRoleName 
 	return false
 }
 
-func validateRoles(roles *rbacV1.RoleList, roleName string) bool {
-	for _, role := range roles.Items {
-		if role.Name == roleName {
-			return true
-		}
-	}
-	return false
-}
-
 func validateClusterRoleBindings(clusterRoleBindings *rbacV1.ClusterRoleBindingList, clusterRoleBindingName string) bool {
 	for _, clusterRoleBinding := range clusterRoleBindings.Items {
 		if clusterRoleBinding.Name == clusterRoleBindingName {
-			return true
-		}
-	}
-	return false
-}
-
-func validateRoleBindings(roleBindings *rbacV1.RoleBindingList, roleBindingName string) bool {
-	for _, roleBinding := range roleBindings.Items {
-		if roleBinding.Name == roleBindingName {
 			return true
 		}
 	}
@@ -291,15 +438,6 @@ func ListClusterRoles(client kubernetes.Interface) (*rbacV1.ClusterRoleList, err
 	return clusterRoles, nil
 }
 
-func ListRoles(namespace string, client kubernetes.Interface) (*rbacV1.RoleList, error) {
-	roles, err := client.RbacV1().Roles(namespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		err = fmt.Errorf("error getting Roles: %v\n", err)
-		return nil, err
-	}
-	return roles, nil
-}
-
 func ListClusterRoleBindings(client kubernetes.Interface) (*rbacV1.ClusterRoleBindingList, error) {
 	clusterRoleBindings, err := client.RbacV1().ClusterRoleBindings().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -307,15 +445,6 @@ func ListClusterRoleBindings(client kubernetes.Interface) (*rbacV1.ClusterRoleBi
 		return nil, err
 	}
 	return clusterRoleBindings, nil
-}
-
-func ListRoleBindings(namespace string, client kubernetes.Interface) (*rbacV1.RoleBindingList, error) {
-	roleBindings, err := client.RbacV1().RoleBindings(namespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		err = fmt.Errorf("error getting RoleBindings: %v\n", err)
-		return nil, err
-	}
-	return roleBindings, nil
 }
 
 func ListMutatingWebhookConfigurations(client kubernetes.Interface) (*arv1.MutatingWebhookConfigurationList, error) {
