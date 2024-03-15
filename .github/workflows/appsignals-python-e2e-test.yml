@@ -1,4 +1,4 @@
-# This is a reusable workflow for running the E2E test for App Signals.
+# This is a reusable workflow for running the Python E2E test for App Signals.
 # It is meant to be called from another workflow.
 # This E2E test is responsible for validating setting up a sample application on an EKS cluster and enabling
 # App Signals using the staging image of the CloudWatch Agent Operator. It validates the generated telemetry
@@ -38,7 +38,7 @@ jobs:
         with:
           # TODO: This step is used for custom pre-release instrumentation
           # Uisng SHA as of March 4. It is a temporary measure until the cw add-on is released with python support
-          ref: abf75babe672412cb63c56cbcf1c5ce2d8c97a1c
+          ref: 06aeba8d6ae448269c557581b5caa47358431a64
           fetch-depth: 0
 
       - name: Generate testing id
@@ -92,10 +92,8 @@ jobs:
           sed -i 's/clusterName:/clusterName: ${{ inputs.test-cluster-name }}/g' values.yaml
           sed -i 's/region:/region: ${{ env.AWS_DEFAULT_REGION }}/g' values.yaml
           sed -i 's/repository: cloudwatch-agent-operator/repository: cwagent-operator-pre-release/g' values.yaml
-          sed -i 's/tag: 1.0.2/tag: latest/g' values.yaml
+          sed -i 's/tag: 1.1.0/tag: latest/g' values.yaml
           sed -i '0,/public: public.ecr.aws\/cloudwatch-agent/s//public: 506463145083.dkr.ecr.us-west-2.amazonaws.com/' values.yaml
-          sed -i 's~repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python~repository: public.ecr.aws/aws-observability/adot-autoinstrumentation-python~g' values.yaml
-          sed -i 's/tag: 0.43b0/tag: v0.0.1/g' values.yaml
           cat values.yaml
 
       # TODO: This step is used for custom pre-release instrumentation
