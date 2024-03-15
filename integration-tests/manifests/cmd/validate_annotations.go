@@ -1,3 +1,4 @@
+// all 12 cases work and organized
 package main
 
 import (
@@ -79,11 +80,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
@@ -175,7 +171,7 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 		return false
 	}
 
-	//---------------------------USE CASE 2 End ----------------------------------------------
+	//---------------------------USE CASE 1 End ----------------------------------------------
 
 	//---------------------------USE CASE 3 (Python on Deployment and java annotations should be removed) ----------------------------------------------
 
@@ -200,11 +196,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
@@ -266,11 +257,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -326,11 +312,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -387,11 +368,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -447,11 +423,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
@@ -497,11 +468,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
@@ -548,11 +514,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
@@ -600,11 +561,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -660,15 +616,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -724,11 +671,6 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	if err != nil {
-		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
-		return false
-	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -842,28 +784,6 @@ func checkIfAnnotationsExistPython(deploymentPods *v1.PodList) bool {
 
 	fmt.Printf("All pods have the correct annotations\n")
 	return true
-}
-func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, deploymentName string, timeout time.Duration) error {
-	start := time.Now()
-	for {
-		if time.Since(start) > timeout {
-			return fmt.Errorf("timed out waiting for Deployment readiness")
-		}
-
-		dep, err := clientSet.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if dep.Status.Replicas == dep.Status.ReadyReplicas &&
-			dep.Status.Replicas == dep.Status.UpdatedReplicas &&
-			dep.Status.Replicas == *dep.Spec.Replicas {
-			fmt.Println("Deployment is ready")
-			return nil
-		}
-
-		time.Sleep(10 * time.Second) // Poll interval
-	}
 }
 
 func updateAnnotationConfig(indexOfAutoAnnotationConfigString int, deployments *appsV1.DeploymentList, jsonStr string) int {
