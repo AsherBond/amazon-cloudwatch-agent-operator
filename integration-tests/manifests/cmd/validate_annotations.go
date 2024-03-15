@@ -52,13 +52,76 @@ func main() {
 
 func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kubernetes.Clientset) bool {
 
-	//---------------------------USE CASE 1 (Java on Deployment)------------------------------
 	//updating operator deployment
 	args := deployments.Items[0].Spec.Template.Spec.Containers[0].Args
 	fmt.Println("These are the args: ", args)
 	indexOfAutoAnnotationConfigString := findMatchingPrefix("--auto-annotation-config=", args)
 
+	//---------------------------USE CASE 1 (Java and Python on Deployment) ----------------------------------------------
 	annotationConfig := auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err := json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(15 * time.Second)
+
+	//check if deployment has annotations.
+	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get nginx deployment: %s", err.Error())
+		return false
+	}
+
+	// List pods belonging to the nginx deployment
+	set := labels.Set(deployment.Spec.Selector.MatchLabels)
+	deploymentPods, err := clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Println("Error listing pods for nginx deployment: %s", err.Error())
+		return false
+	}
+	//wait for pods to update
+	if !checkIfAnnotationsExistJava(deploymentPods) {
+		return false
+	}
+	//wait for pods to update
+	if !checkIfAnnotationsExistPython(deploymentPods) {
+		return false
+	}
+
+	//---------------------------------------------------USE CASE 1 End ---------------------------------------------------------
+
+	//---------------------------USE CASE 2 (Java on Deployment and Python Should be Remove Python)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
 			Namespaces:   []string{""},
 			DaemonSets:   []string{""},
@@ -72,7 +135,7 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 			StatefulSets: []string{""},
 		},
 	}
-	jsonStr, err := json.Marshal(annotationConfig)
+	jsonStr, err = json.Marshal(annotationConfig)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return false
@@ -84,18 +147,18 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
 	}
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	//check if deployment has annotations.
-	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
+	deployment, err = clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
 	if err != nil {
 		fmt.Println("Failed to get nginx deployment: %s", err.Error())
 		return false
 	}
 
 	// List pods belonging to the nginx deployment
-	set := labels.Set(deployment.Spec.Selector.MatchLabels)
-	deploymentPods, err := clientSet.CoreV1().Pods(deployment.Namespace).List(context.TODO(), metav1.ListOptions{
+	set = labels.Set(deployment.Spec.Selector.MatchLabels)
+	deploymentPods, err = clientSet.CoreV1().Pods(deployment.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: set.AsSelector().String(),
 	})
 	if err != nil {
@@ -103,14 +166,143 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 		return false
 	}
 
+	//Python should have been removed
+	if checkIfAnnotationsExistPython(deploymentPods) {
+		return false
+	}
 	//wait for pods to update
 	if !checkIfAnnotationsExistJava(deploymentPods) {
 		return false
 	}
 
-	//---------------------------USE CASE 1 End ----------------------------------------------
+	//---------------------------USE CASE 2 End ----------------------------------------------
 
-	//---------------------------USE CASE 2 (Java on DaemonSet)------------------------------
+	//---------------------------USE CASE 3 (Python on Deployment and java annotations should be removed) ----------------------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(15 * time.Second)
+
+	//check if deployment has annotations.
+	deployment, err = clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get nginx deployment: %s", err.Error())
+		return false
+	}
+
+	// List pods belonging to the nginx deployment
+	set = labels.Set(deployment.Spec.Selector.MatchLabels)
+	deploymentPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Println("Error listing pods for nginx deployment: %s", err.Error())
+		return false
+	}
+
+	//java shouldn't be annotated in this case
+	if checkIfAnnotationsExistJava(deploymentPods) {
+		return false
+	}
+
+	//wait for pods to update
+	if !checkIfAnnotationsExistPython(deploymentPods) {
+		return false
+	}
+
+	//---------------------------USE CASE 3 End ----------------------------------------------
+
+	//---------------------------USE CASE 4 (Python and Java on DaemonSet)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{"default/fluent-bit"},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{"default/fluent-bit"},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	time.Sleep(15 * time.Second)
+
+	// Get the fluent-bit DaemonSet
+	daemonSet, err := clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get fluent-bit daemonset: %s", err.Error())
+	}
+
+	// List pods belonging to the fluent-bit DaemonSet
+	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	daemonPods, err := clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+
+	if err != nil {
+		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	}
+	if !checkIfAnnotationsExistJava(daemonPods) {
+		return false
+	}
+	if !checkIfAnnotationsExistPython(daemonPods) {
+		return false
+	}
+	fmt.Printf("All fluent-bit pods have the correct annotations\n")
+	//---------------------------Use Case 4 End-------------------------------------
+
+	//---------------------------USE CASE 5 (Java on DaemonSet and Python should be removed)------------------------------
 
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
@@ -134,36 +326,105 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
 	}
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
 	// Get the fluent-bit DaemonSet
-	daemonSet, err := clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	daemonSet, err = clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
 	if err != nil {
 		fmt.Println("Failed to get fluent-bit daemonset: %s", err.Error())
 	}
 
 	// List pods belonging to the fluent-bit DaemonSet
 	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
-	daemonPods, err := clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+	daemonPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: set.AsSelector().String(),
 	})
 	if err != nil {
 		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
 	}
+	//Python should not exist on pods
+	if checkIfAnnotationsExistPython(daemonPods) {
+		return false
+	}
 	if !checkIfAnnotationsExistJava(daemonPods) {
 		return false
 	}
 	fmt.Printf("All fluent-bit pods have the correct annotations\n")
-	//---------------------------Use Case 2 End-------------------------------------
+	//---------------------------Use Case 5 End-------------------------------------
 
-	//---------------------------USE CASE 5 (Java on Namespace) ----------------------------------------------
+	//---------------------------USE CASE 6 (Python on DaemonSet Java annotation should be removed)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{"default/fluent-bit"},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	time.Sleep(15 * time.Second)
+
+	// Get the fluent-bit DaemonSet
+	daemonSet, err = clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get fluent-bit daemonset: %s", err.Error())
+	}
+
+	// List pods belonging to the fluent-bit DaemonSet
+	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	daemonPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+
+	if err != nil {
+		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	}
+	//java annotations should be removed
+	if checkIfAnnotationsExistJava(daemonPods) {
+		return false
+	}
+	if !checkIfAnnotationsExistPython(daemonPods) {
+		return false
+	}
+	fmt.Printf("All fluent-bit pods have the correct annotations\n")
+	//---------------------------Use Case 6 End-------------------------------------
+
+	//---------------------------USE CASE 7 (Java and Python on Namespace) ----------------------------------------------
 
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
@@ -173,7 +434,7 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 			StatefulSets: []string{""},
 		},
 		Python: auto.AnnotationResources{
-			Namespaces:   []string{""},
+			Namespaces:   []string{"default"},
 			DaemonSets:   []string{""},
 			Deployments:  []string{""},
 			StatefulSets: []string{""},
@@ -186,38 +447,44 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
 	}
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	ns, err := clientSet.CoreV1().Namespaces().Get(context.TODO(), "default", metav1.GetOptions{})
 	if err != nil {
 		fmt.Println("Error getting namespace %s", err.Error())
 		return false
 	}
-
-	//wait for pods to update
 	if !checkNameSpaceAnnotationsJava(ns) {
 		return false
 	}
-	//------------------------------------USE CASE 5 End ----------------------------------------------
+	//wait for pods to update
+	if !checkNameSpaceAnnotationsPython(ns) {
+		return false
+	}
+	//------------------------------------USE CASE 7 End ----------------------------------------------
 
-	//---------------------------USE CASE 6 (Python on Namespace) ----------------------------------------------
+	//---------------------------USE CASE 8 (Java on Namespace Python should be removed) ----------------------------------------------
 
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
+			Namespaces:   []string{"default"},
 			DaemonSets:   []string{""},
 			Deployments:  []string{""},
 			StatefulSets: []string{""},
 		},
 		Python: auto.AnnotationResources{
-			Namespaces:   []string{"default"},
+			Namespaces:   []string{""},
 			DaemonSets:   []string{""},
 			Deployments:  []string{""},
 			StatefulSets: []string{""},
@@ -230,14 +497,18 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
 	}
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	ns, err = clientSet.CoreV1().Namespaces().Get(context.TODO(), "default", metav1.GetOptions{})
 	if err != nil {
@@ -245,13 +516,67 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 		return false
 	}
 
+	if checkNameSpaceAnnotationsPython(ns) {
+		return false
+	}
+	//wait for pods to update
+	if !checkNameSpaceAnnotationsJava(ns) {
+		return false
+	}
+	//------------------------------------USE CASE 8 End ----------------------------------------------
+
+	//---------------------------USE CASE 9 (Python on Namespace and Java annotation should not exist) ----------------------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{"default"},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(15 * time.Second)
+
+	ns, err = clientSet.CoreV1().Namespaces().Get(context.TODO(), "default", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Error getting namespace %s", err.Error())
+		return false
+	}
+	//java annotations should not exist anymore
+	if checkNameSpaceAnnotationsJava(ns) {
+		return false
+	}
 	//wait for pods to update
 	if !checkNameSpaceAnnotationsPython(ns) {
 		return false
 	}
-	//------------------------------------USE CASE 6 End ----------------------------------------------
+	//------------------------------------USE CASE 9 End ----------------------------------------------
 
-	//---------------------------USE CASE 7 (Java on Stateful set)------------------------------
+	//---------------------------USE CASE 10 (Python and Java on Stateful set)------------------------------
 
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
@@ -264,7 +589,7 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 			Namespaces:   []string{""},
 			DaemonSets:   []string{""},
 			Deployments:  []string{""},
-			StatefulSets: []string{""},
+			StatefulSets: []string{"default/my-statefulset"},
 		},
 	}
 	jsonStr, err = json.Marshal(annotationConfig)
@@ -275,7 +600,11 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -298,14 +627,80 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	if err != nil {
 		fmt.Printf("Error listing pods for my-statefulset StatefulSet: %s\n", err.Error())
 	}
+	if !checkIfAnnotationsExistJava(statefulSetPods) {
+		return false
+	}
+	if !checkIfAnnotationsExistPython(statefulSetPods) {
+		return false
+	}
+	fmt.Printf("All my-statefulset pods have the correct annotations\n")
+	//---------------------------Use Case 10 End-------------------------------------
 
+	//---------------------------USE CASE 11 (Java on Stateful set and Python should be removed)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{"default/my-statefulset"},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(15 * time.Second)
+
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	// Get the StatefulSet
+	statefulSet, err = clientSet.AppsV1().StatefulSets("default").Get(context.TODO(), "my-statefulset", metav1.GetOptions{})
+	if err != nil {
+		fmt.Printf("Failed to get my-statefulset StatefulSet: %s\n", err.Error())
+	}
+
+	// List pods belonging to the StatefulSet
+	set = labels.Set(statefulSet.Spec.Selector.MatchLabels)
+	statefulSetPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Printf("Error listing pods for my-statefulset StatefulSet: %s\n", err.Error())
+	}
+	if checkIfAnnotationsExistPython(statefulSetPods) {
+		return false
+	}
 	if !checkIfAnnotationsExistJava(statefulSetPods) {
 		return false
 	}
 	fmt.Printf("All my-statefulset pods have the correct annotations\n")
-	//---------------------------Use Case 7 End-------------------------------------
+	//---------------------------Use Case 11 End-------------------------------------
 
-	//---------------------------USE CASE 8 (Python on Stateful set)------------------------------
+	//---------------------------USE CASE 12 (Python on Stateful set and java should be removed)------------------------------
 
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
@@ -329,7 +724,11 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
 
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	err = waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	if err != nil {
+		fmt.Printf("Failed to wait for deployment %s\n", err.Error())
+		return false
+	}
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
@@ -352,122 +751,17 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	if err != nil {
 		fmt.Printf("Error listing pods for my-statefulset StatefulSet: %s\n", err.Error())
 	}
-
+	if checkIfAnnotationsExistJava(statefulSetPods) {
+		return false
+	}
 	if !checkIfAnnotationsExistPython(statefulSetPods) {
 		return false
 	}
 	fmt.Printf("All my-statefulset pods have the correct annotations\n")
-	//---------------------------Use Case 8 End-------------------------------------
+	//---------------------------Use Case 12 End-------------------------------------
 
-	//---------------------------USE CASE 3 (Python on Deployment) ----------------------------------------------
-
-	annotationConfig = auto.AnnotationConfig{
-		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{""},
-			Deployments:  []string{""},
-			StatefulSets: []string{""},
-		},
-		Python: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{""},
-			Deployments:  []string{"default/nginx"},
-			StatefulSets: []string{""},
-		},
-	}
-	jsonStr, err = json.Marshal(annotationConfig)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return false
-	}
-	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
-	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
-
-	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
-		return false
-	}
-	time.Sleep(10 * time.Second)
-
-	//check if deployment has annotations.
-	deployment, err = clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
-	if err != nil {
-		fmt.Println("Failed to get nginx deployment: %s", err.Error())
-		return false
-	}
-
-	// List pods belonging to the nginx deployment
-	set = labels.Set(deployment.Spec.Selector.MatchLabels)
-	deploymentPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: set.AsSelector().String(),
-	})
-	if err != nil {
-		fmt.Println("Error listing pods for nginx deployment: %s", err.Error())
-		return false
-	}
-
-	//wait for pods to update
-	if !checkIfAnnotationsExistPython(deploymentPods) {
-		return false
-	}
-
-	//---------------------------USE CASE 3 End ----------------------------------------------
-
-	//---------------------------USE CASE 4 (Python on DaemonSet)------------------------------
-
-	annotationConfig = auto.AnnotationConfig{
-		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{""},
-			Deployments:  []string{""},
-			StatefulSets: []string{""},
-		},
-		Python: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{"default/fluent-bit"},
-			Deployments:  []string{""},
-			StatefulSets: []string{""},
-		},
-	}
-	jsonStr, err = json.Marshal(annotationConfig)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return false
-	}
-
-	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
-
-	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
-	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
-	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
-		return false
-	}
-	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
-	time.Sleep(10 * time.Second)
-
-	// Get the fluent-bit DaemonSet
-	daemonSet, err = clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
-	if err != nil {
-		fmt.Println("Failed to get fluent-bit daemonset: %s", err.Error())
-	}
-
-	// List pods belonging to the fluent-bit DaemonSet
-	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
-	daemonPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: set.AsSelector().String(),
-	})
-
-	if err != nil {
-		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
-	}
-	if !checkIfAnnotationsExistPython(daemonPods) {
-		return false
-	}
-	fmt.Printf("All fluent-bit pods have the correct annotations\n")
 	return true
-	//---------------------------Use Case 4 End-------------------------------------
+
 }
 
 func checkNameSpaceAnnotationsJava(ns *v1.Namespace) bool {
@@ -596,15 +890,6 @@ func ListDeployments(namespace string, client kubernetes.Interface) (*appsV1.Dep
 		return nil, err
 	}
 	return deployments, nil
-}
-
-func ListDaemonSets(namespace string, client kubernetes.Interface) (*appsV1.DaemonSetList, error) {
-	daemonSets, err := client.AppsV1().DaemonSets(namespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		err = fmt.Errorf("error getting DaemonSets: %v\n", err)
-		return nil, err
-	}
-	return daemonSets, nil
 }
 
 func findMatchingPrefix(str string, strs []string) int {
