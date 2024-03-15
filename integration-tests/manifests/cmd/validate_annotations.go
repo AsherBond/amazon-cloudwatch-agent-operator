@@ -52,6 +52,7 @@ func main() {
 
 func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kubernetes.Clientset) bool {
 
+	//---------------------------USE CASE 1 (Java on Deployment)------------------------------
 	//updating operator deployment
 	args := deployments.Items[0].Spec.Template.Spec.Containers[0].Args
 	fmt.Println("These are the args: ", args)
@@ -59,10 +60,14 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	annotationConfig := auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
-			Namespaces:   []string{""},
-			DaemonSets:   []string{""},
-			Deployments:  []string{"default/nginx"},
-			StatefulSets: []string{""},
+			Namespaces:  []string{""},
+			DaemonSets:  []string{""},
+			Deployments: []string{"default/nginx"},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:  []string{""},
+			DaemonSets:  []string{""},
+			Deployments: []string{""},
 		},
 	}
 	jsonStr, err := json.Marshal(annotationConfig)
@@ -74,10 +79,11 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	indexOfAutoAnnotationConfigString = updateAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
 	fmt.Println("This is the index of annotation: ", indexOfAutoAnnotationConfigString)
-	if !updateOperator(clientSet, deployments) {
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet) {
 		return false
 	}
-	time.Sleep(10 * time.Second)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
 	//check if deployment has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
@@ -102,10 +108,20 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 		return false
 	}
 
+	//---------------------------USE CASE 1 End ----------------------------------------------
+
+	//---------------------------USE CASE 2 (Java on DaemonSet)------------------------------
+
 	annotationConfig = auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
 			Namespaces:   []string{""},
 			DaemonSets:   []string{"default/fluent-bit"},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
 			Deployments:  []string{""},
 			StatefulSets: []string{""},
 		},
@@ -115,12 +131,15 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 		fmt.Println("Error:", err)
 		return false
 	}
-	indexOfAutoAnnotationConfigString = updateAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
-	if !updateOperator(clientSet, deployments) {
-		fmt.Println("kasjdfkls")
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet) {
 		return false
 	}
-	time.Sleep(10 * time.Second)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
 	// Get the fluent-bit DaemonSet
 	daemonSet, err := clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
@@ -142,18 +161,23 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 	fmt.Printf("All fluent-bit pods have the correct annotations\n")
 	return true
+	//---------------------------Use Case 2 End-------------------------------------
+
 }
 
-func updateOperator(clientSet *kubernetes.Clientset, deployments *appsV1.DeploymentList) bool {
+func updateOperator(clientSet *kubernetes.Clientset) bool {
+	var err error
 
-	// Update operator Deployment
-	_, err := clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-	if err != nil {
-		fmt.Printf("Error updating Deployment: %s\n", err)
-		return false
+	// Attempt to update the deployment up to 3 times
+	deployments, _ := ListDeployments("amazon-cloudwatch", clientSet)
+
+	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
+
+	if err == nil {
+		fmt.Println("Deployment updated successfully!")
+		return true
 	}
-	fmt.Println("Deployment updated successfully!")
-	return true
+	return false
 }
 
 func checkIfAnnotationsExist(deploymentPods *v1.PodList) bool {
@@ -170,25 +194,31 @@ func checkIfAnnotationsExist(deploymentPods *v1.PodList) bool {
 
 	}
 
-	fmt.Printf("All nginx pods have the correct annotations\n")
+	fmt.Printf("All pods have the correct annotations\n")
 	return true
 }
-func GetNameSpace(namespace string, client kubernetes.Interface) (*v1.Namespace, error) {
-	ns, err := client.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
-	if err != nil {
-		err = fmt.Errorf("error getting namespace: %v\n", err)
-		return nil, err
-	}
-	return ns, nil
-}
 
-func ListServices(namespace string, client kubernetes.Interface) (*v1.ServiceList, error) {
-	namespaces, err := client.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		err = fmt.Errorf("error getting Services: %v\n", err)
-		return nil, err
+func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, deploymentName string, timeout time.Duration) error {
+	start := time.Now()
+	for {
+		if time.Since(start) > timeout {
+			return fmt.Errorf("timed out waiting for Deployment readiness")
+		}
+
+		dep, err := clientSet.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if dep.Status.Replicas == dep.Status.ReadyReplicas &&
+			dep.Status.Replicas == dep.Status.UpdatedReplicas &&
+			dep.Status.Replicas == *dep.Spec.Replicas {
+			fmt.Println("Deployment is ready")
+			return nil
+		}
+
+		time.Sleep(10 * time.Second) // Poll interval
 	}
-	return namespaces, nil
 }
 
 func updateAnnotationConfig(indexOfAutoAnnotationConfigString int, deployments *appsV1.DeploymentList, jsonStr string) int {
