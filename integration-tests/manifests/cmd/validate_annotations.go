@@ -60,14 +60,16 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	annotationConfig := auto.AnnotationConfig{
 		Java: auto.AnnotationResources{
-			Namespaces:  []string{""},
-			DaemonSets:  []string{""},
-			Deployments: []string{"default/nginx"},
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
 		},
 		Python: auto.AnnotationResources{
-			Namespaces:  []string{""},
-			DaemonSets:  []string{""},
-			Deployments: []string{""},
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
 		},
 	}
 	jsonStr, err := json.Marshal(annotationConfig)
@@ -79,11 +81,10 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
 	indexOfAutoAnnotationConfigString = updateAnnotationConfig(indexOfAutoAnnotationConfigString, deployments, string(jsonStr))
 	fmt.Println("This is the index of annotation: ", indexOfAutoAnnotationConfigString)
-	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
-	if !updateOperator(clientSet) {
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
 	}
-	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	time.Sleep(10 * time.Second)
 
 	//check if deployment has annotations.
 	deployment, err := clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
@@ -103,8 +104,7 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 	}
 
 	//wait for pods to update
-
-	if !checkIfAnnotationsExist(deploymentPods) {
+	if !checkIfAnnotationsExistJava(deploymentPods) {
 		return false
 	}
 
@@ -136,9 +136,11 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
-	if !updateOperator(clientSet) {
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		return false
 	}
+	time.Sleep(10 * time.Second)
+
 	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
 
 	// Get the fluent-bit DaemonSet
@@ -149,42 +151,374 @@ func verifyAutoAnnotation(deployments *appsV1.DeploymentList, clientSet *kuberne
 
 	// List pods belonging to the fluent-bit DaemonSet
 	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
-	daemonPods, err := clientSet.CoreV1().Pods("amazon-cloudwatch").List(context.TODO(), metav1.ListOptions{
+	daemonPods, err := clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: set.AsSelector().String(),
 	})
 	if err != nil {
 		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
 	}
+	if !checkIfAnnotationsExistJava(daemonPods) {
+		return false
+	}
+	fmt.Printf("All fluent-bit pods have the correct annotations\n")
+	//---------------------------Use Case 2 End-------------------------------------
 
-	if !checkIfAnnotationsExist(daemonPods) {
+	//---------------------------USE CASE 5 (Java on Namespace) ----------------------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{"default"},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(10 * time.Second)
+
+	ns, err := clientSet.CoreV1().Namespaces().Get(context.TODO(), "default", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Error getting namespace %s", err.Error())
+		return false
+	}
+
+	//wait for pods to update
+	if !checkNameSpaceAnnotationsJava(ns) {
+		return false
+	}
+	//------------------------------------USE CASE 5 End ----------------------------------------------
+
+	//---------------------------USE CASE 6 (Python on Namespace) ----------------------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{"default"},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(10 * time.Second)
+
+	ns, err = clientSet.CoreV1().Namespaces().Get(context.TODO(), "default", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Error getting namespace %s", err.Error())
+		return false
+	}
+
+	//wait for pods to update
+	if !checkNameSpaceAnnotationsPython(ns) {
+		return false
+	}
+	//------------------------------------USE CASE 6 End ----------------------------------------------
+
+	//---------------------------USE CASE 7 (Java on Stateful set)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{"default/my-statefulset"},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(15 * time.Second)
+
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	// Get the StatefulSet
+	statefulSet, err := clientSet.AppsV1().StatefulSets("default").Get(context.TODO(), "my-statefulset", metav1.GetOptions{})
+	if err != nil {
+		fmt.Printf("Failed to get my-statefulset StatefulSet: %s\n", err.Error())
+	}
+
+	// List pods belonging to the StatefulSet
+	set = labels.Set(statefulSet.Spec.Selector.MatchLabels)
+	statefulSetPods, err := clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Printf("Error listing pods for my-statefulset StatefulSet: %s\n", err.Error())
+	}
+
+	if !checkIfAnnotationsExistJava(statefulSetPods) {
+		return false
+	}
+	fmt.Printf("All my-statefulset pods have the correct annotations\n")
+	//---------------------------Use Case 7 End-------------------------------------
+
+	//---------------------------USE CASE 8 (Python on Stateful set)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{"default/my-statefulset"},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(15 * time.Second)
+
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	// Get the StatefulSet
+	statefulSet, err = clientSet.AppsV1().StatefulSets("default").Get(context.TODO(), "my-statefulset", metav1.GetOptions{})
+	if err != nil {
+		fmt.Printf("Failed to get my-statefulset StatefulSet: %s\n", err.Error())
+	}
+
+	// List pods belonging to the StatefulSet
+	set = labels.Set(statefulSet.Spec.Selector.MatchLabels)
+	statefulSetPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Printf("Error listing pods for my-statefulset StatefulSet: %s\n", err.Error())
+	}
+
+	if !checkIfAnnotationsExistPython(statefulSetPods) {
+		return false
+	}
+	fmt.Printf("All my-statefulset pods have the correct annotations\n")
+	//---------------------------Use Case 8 End-------------------------------------
+
+	//---------------------------USE CASE 3 (Python on Deployment) ----------------------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{"default/nginx"},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	//finding where index of --auto-annotation-config= is (if it doesn't exist it will be appended)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	time.Sleep(10 * time.Second)
+
+	//check if deployment has annotations.
+	deployment, err = clientSet.AppsV1().Deployments("default").Get(context.TODO(), "nginx", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get nginx deployment: %s", err.Error())
+		return false
+	}
+
+	// List pods belonging to the nginx deployment
+	set = labels.Set(deployment.Spec.Selector.MatchLabels)
+	deploymentPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+	if err != nil {
+		fmt.Println("Error listing pods for nginx deployment: %s", err.Error())
+		return false
+	}
+
+	//wait for pods to update
+	if !checkIfAnnotationsExistPython(deploymentPods) {
+		return false
+	}
+
+	//---------------------------USE CASE 3 End ----------------------------------------------
+
+	//---------------------------USE CASE 4 (Python on DaemonSet)------------------------------
+
+	annotationConfig = auto.AnnotationConfig{
+		Java: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{""},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+		Python: auto.AnnotationResources{
+			Namespaces:   []string{""},
+			DaemonSets:   []string{"default/fluent-bit"},
+			Deployments:  []string{""},
+			StatefulSets: []string{""},
+		},
+	}
+	jsonStr, err = json.Marshal(annotationConfig)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+
+	deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + string(jsonStr)
+
+	waitForDeploymentReady(clientSet, "amazon-cloudwatch", "amazon-cloudwatch-observability-controller-manager", 60)
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	if !updateOperator(clientSet, deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
+		return false
+	}
+	fmt.Println(indexOfAutoAnnotationConfigString, string(jsonStr))
+	time.Sleep(10 * time.Second)
+
+	// Get the fluent-bit DaemonSet
+	daemonSet, err = clientSet.AppsV1().DaemonSets("default").Get(context.TODO(), "fluent-bit", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Failed to get fluent-bit daemonset: %s", err.Error())
+	}
+
+	// List pods belonging to the fluent-bit DaemonSet
+	set = labels.Set(daemonSet.Spec.Selector.MatchLabels)
+	daemonPods, err = clientSet.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: set.AsSelector().String(),
+	})
+
+	if err != nil {
+		fmt.Println("Error listing pods for fluent-bit daemonset: %s", err.Error())
+	}
+	if !checkIfAnnotationsExistPython(daemonPods) {
 		return false
 	}
 	fmt.Printf("All fluent-bit pods have the correct annotations\n")
 	return true
-	//---------------------------Use Case 2 End-------------------------------------
-
+	//---------------------------Use Case 4 End-------------------------------------
 }
 
-func updateOperator(clientSet *kubernetes.Clientset) bool {
+func checkNameSpaceAnnotationsJava(ns *v1.Namespace) bool {
+	if ns.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
+		return false
+	}
+	if ns.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-java"] != "true" {
+		return false
+	}
+	return true
+}
+func checkNameSpaceAnnotationsPython(ns *v1.Namespace) bool {
+	if ns.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-python"] != "true" {
+		return false
+	}
+	if ns.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-python"] != "true" {
+		return false
+	}
+	return true
+}
+func updateOperator(clientSet *kubernetes.Clientset, Args []string) bool {
 	var err error
 
-	// Attempt to update the deployment up to 3 times
-	deployments, _ := ListDeployments("amazon-cloudwatch", clientSet)
-
-	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), &deployments.Items[0], metav1.UpdateOptions{})
-
-	if err == nil {
-		fmt.Println("Deployment updated successfully!")
-		return true
+	// Attempt to get the deployment by name
+	deployment, err := clientSet.AppsV1().Deployments("amazon-cloudwatch").Get(context.TODO(), "amazon-cloudwatch-observability-controller-manager", metav1.GetOptions{})
+	//fmt.Println("This is the deployment args: ", deployment.Spec.Template.Spec.Containers[0].Args)
+	deployment.Spec.Template.Spec.Containers[0].Args = Args
+	//fmt.Println("This is the deployment args: ", deployment.Spec.Template.Spec.Containers[0].Args)
+	if err != nil {
+		fmt.Printf("Failed to get deployment: %v\n", err)
+		return false
 	}
-	return false
+
+	// Update the deployment
+	_, err = clientSet.AppsV1().Deployments("amazon-cloudwatch").Update(context.TODO(), deployment, metav1.UpdateOptions{})
+	if err != nil {
+		fmt.Printf("Failed to update deployment: %v\n", err)
+		return false
+	}
+
+	fmt.Println("Deployment updated successfully!")
+	time.Sleep(5 * time.Second)
+	return true
+
 }
 
-func checkIfAnnotationsExist(deploymentPods *v1.PodList) bool {
+func checkIfAnnotationsExistJava(deploymentPods *v1.PodList) bool {
 	for _, pod := range deploymentPods.Items {
 
 		fmt.Printf("This is the key: %v, this is value: %v\n", "instrumentation.opentelemetry.io/inject-java", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"])
-
+		fmt.Println("pod name: ", pod.Name)
 		if pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-java"] != "true" {
 			return false
 		}
@@ -197,7 +531,24 @@ func checkIfAnnotationsExist(deploymentPods *v1.PodList) bool {
 	fmt.Printf("All pods have the correct annotations\n")
 	return true
 }
+func checkIfAnnotationsExistPython(deploymentPods *v1.PodList) bool {
+	for _, pod := range deploymentPods.Items {
 
+		fmt.Printf("This is the key: %v, this is value: %v\n", "instrumentation.opentelemetry.io/inject-python", pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-python"])
+		fmt.Println("pod name: ", pod.Name)
+
+		if pod.ObjectMeta.Annotations["instrumentation.opentelemetry.io/inject-python"] != "true" {
+			return false
+		}
+		if pod.ObjectMeta.Annotations["cloudwatch.aws.amazon.com/auto-annotate-python"] != "true" {
+			return false
+		}
+
+	}
+
+	fmt.Printf("All pods have the correct annotations\n")
+	return true
+}
 func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, deploymentName string, timeout time.Duration) error {
 	start := time.Now()
 	for {
@@ -222,17 +573,19 @@ func waitForDeploymentReady(clientSet *kubernetes.Clientset, namespace string, d
 }
 
 func updateAnnotationConfig(indexOfAutoAnnotationConfigString int, deployments *appsV1.DeploymentList, jsonStr string) int {
+	//fmt.Printf("Index of annotation %v and this is length of deployment args %v \n", indexOfAutoAnnotationConfigString, len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args))
 	//if auto annotation not part of config, we will add it
 	if indexOfAutoAnnotationConfigString < 0 || indexOfAutoAnnotationConfigString >= len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) {
 		fmt.Println("We are in the if statement")
 		deployments.Items[0].Spec.Template.Spec.Containers[0].Args = append(deployments.Items[0].Spec.Template.Spec.Containers[0].Args, "--auto-annotation-config="+jsonStr)
 		indexOfAutoAnnotationConfigString = len(deployments.Items[0].Spec.Template.Spec.Containers[0].Args) - 1
 		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
-		fmt.Println("This is the updated index of annotation: ", indexOfAutoAnnotationConfigString)
+		//fmt.Println("This is the updated index of annotation: ", indexOfAutoAnnotationConfigString)
+		//fmt.Println("These are the args: ", deployments.Items[0].Spec.Template.Spec.Containers[0].Args)
 	} else {
-		fmt.Println("We are in the else statement")
+		//fmt.Println("We are in the else statement")
 		deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString] = "--auto-annotation-config=" + jsonStr
-		fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
+		//fmt.Println("AutoAnnotationConfiguration: " + deployments.Items[0].Spec.Template.Spec.Containers[0].Args[indexOfAutoAnnotationConfigString])
 	}
 	return indexOfAutoAnnotationConfigString
 }
