@@ -20,8 +20,8 @@ permissions:
   contents: read
 
 jobs:
-  AmazonCloudWatchAgentOperatorIntegrationTest:
-    name: AmazonCloudWatchAgentOperatorIntegrationTest
+  InstrumentationTest:
+    name: InstrumentationTest
     runs-on: ubuntu-latest
     permissions:
       id-token: write
