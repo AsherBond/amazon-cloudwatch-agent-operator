@@ -182,6 +182,8 @@ jobs:
           sleep 5
           go test -v -run TestJavaOnlyDeployment ./integration-tests/manifests/annotations -timeout 30m
           sleep 5
+          go test -v -run TestPythonOnlyDeployment ./integration-tests/manifests/annotations -timeout 30m
+          sleep 5
           go test -v -run TestAnnotationsOnMultipleResources ./integration-tests/manifests/annotations -timeout 30m
   
   
