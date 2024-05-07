@@ -297,6 +297,29 @@ resource "kubernetes_config_map" "cwagentconfig" {
   }
 }
 
+data "template_file" "httpd_config" {
+  template = file(local.httpd_config)
+  vars     = {}
+}
+data "template_file" "httpd_ssl_config" {
+  template = file(local.httpd_ssl_config)
+  vars     = {}
+}
+
+resource "kubernetes_config_map" "httpdconfig" {
+  depends_on = [
+    kubernetes_namespace.namespace,
+    kubernetes_service_account.cwagentservice
+  ]
+  metadata {
+    name      = "httpdconfig"
+    namespace = "amazon-cloudwatch"
+  }
+  data = {
+    "httpd.conf" : data.template_file.httpd_config.rendered
+    "httpd-ssl.conf" : data.template_file.httpd_ssl_config.rendered
+  }
+}
 
 resource "kubernetes_service_account" "cwagentservice" {
   depends_on = [kubernetes_namespace.namespace]
@@ -369,6 +392,7 @@ resource "kubernetes_cluster_role_binding" "rolebinding" {
     namespace = "amazon-cloudwatch"
   }
 }
+
 resource "null_resource" "validator" {
   depends_on = [
       kubernetes_cluster_role_binding.rolebinding,
