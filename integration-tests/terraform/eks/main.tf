@@ -122,6 +122,6 @@ resource "null_resource" "validator" {
     aws_eks_addon.this
   ]
   provisioner "local-exec" {
-    command = "go test ${var.test_dir} -v --tags=linuxonly"
+    command = "go test ${var.test_dir} -eksClusterName ${aws_eks_cluster.this.name} -computeType=EKS -v -eksDeploymentStrategy=DAEMON -eksGpuType=nvidia"
   }
 }

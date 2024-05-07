@@ -124,6 +124,6 @@ jobs:
           timeout_minutes: 8
           retry_wait_seconds: 5
           command: |
-            cd integration-tests/terraform/eks
+            cd integration-tests/terraform/gpu
 
             terraform destroy -var="beta=${{ github.event.inputs.run_in_beta }}" --auto-approve
