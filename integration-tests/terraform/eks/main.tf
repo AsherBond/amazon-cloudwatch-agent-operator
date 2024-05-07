@@ -12,6 +12,8 @@ module "basic_components" {
 locals {
   role_arn = format("%s%s", module.basic_components.role_arn, var.beta ? "-eks-beta" : "")
   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
+  cwagent_config = "${var.test_dir}/resources/config.json"
+
 }
 
 data "aws_eks_cluster_auth" "this" {
@@ -30,9 +32,7 @@ resource "aws_eks_cluster" "this" {
 
 
 
-locals {
-  cwagent_config = "${var.test_dir}/resources/config.json"
-}
+
 data "template_file" "cwagent_config" {
   template = file(local.cwagent_config)
   vars = {
