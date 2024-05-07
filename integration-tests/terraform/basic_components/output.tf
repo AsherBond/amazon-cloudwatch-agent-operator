@@ -1,10 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT
 
-output "vpc_id" {
-  value = data.aws_vpc.vpc.id
-}
-
 output "security_group" {
   value = data.aws_security_group.security_group.id
 }

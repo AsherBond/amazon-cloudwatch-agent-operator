@@ -34,11 +34,6 @@ resource "aws_eks_cluster" "this" {
     security_group_ids = [module.basic_components.security_group]
   }
 }
-resource "aws_security_group" "eks_cluster_sg" {
-  name        = "cwagent-operator-eks-integ-${module.common.testing_id}"
-  description = "Cluster communication with worker nodes"
-  vpc_id      = module.basic_components.vpc_id
-}
 
 
 locals {
