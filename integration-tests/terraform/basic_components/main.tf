@@ -13,6 +13,7 @@ data "aws_vpc" "vpc" {
   default = true
 }
 
+
 data "aws_subnets" "public_subnet_ids" {
   filter {
     name   = "vpc-id"
@@ -23,3 +24,5 @@ data "aws_subnets" "public_subnet_ids" {
 data "aws_security_group" "security_group" {
   name = module.common.vpc_security_group
 }
+
+
