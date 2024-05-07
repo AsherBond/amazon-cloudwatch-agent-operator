@@ -36,7 +36,7 @@ resource "aws_eks_cluster" "this" {
 }
 
 locals {
-  cwagent_config = "../../${var.test_dir}/resources/config.json"
+  cwagent_config = "${var.test_dir}/resources/config.json"
 }
 data "template_file" "cwagent_config" {
   template = file(local.cwagent_config)
