@@ -217,8 +217,6 @@ resource "aws_eks_addon" "this" {
 
 resource "null_resource" "validator" {
   depends_on = [
-      kubernetes_cluster_role_binding.rolebinding,
-      kubernetes_service_account.cwagentservice,
       aws_eks_addon.this
   ]
   provisioner "local-exec" {
