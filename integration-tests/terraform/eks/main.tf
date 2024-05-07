@@ -34,31 +34,6 @@ resource "aws_eks_cluster" "this" {
   }
 }
 
-# EKS Node Groups
-resource "aws_eks_node_group" "this" {
-  cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "cwagent-eks-integ-node"
-  node_role_arn   = aws_iam_role.node_role.arn
-  subnet_ids      = module.basic_components.public_subnet_ids
-
-  scaling_config {
-    desired_size = 1
-    max_size     = 1
-    min_size     = 1
-  }
-
-  ami_type       = var.ami_type
-  capacity_type  = "ON_DEMAND"
-  disk_size      = 20
-  instance_types = [var.instance_type]
-
-  depends_on = [
-    aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
-    aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
-    aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
-    aws_iam_role_policy_attachment.node_CloudWatchAgentServerPolicy
-  ]
-}
 
 # EKS Node IAM Role
 resource "aws_iam_role" "node_role" {
@@ -126,122 +101,52 @@ resource "aws_security_group_rule" "cluster_outbound" {
   type                     = "egress"
 }
 
+# EKS Node Groups
+resource "aws_eks_node_group" "this" {
+  cluster_name    = aws_eks_cluster.this.name
+  node_group_name = "cwagent-operator-eks-integ-node"
+  node_role_arn   = aws_iam_role.node_role.arn
+  subnet_ids      = module.basic_components.public_subnet_ids
 
-# EKS Node Security Group
-resource "aws_security_group" "eks_nodes_sg" {
-  name        = "cwagent-eks-node-sg-${module.common.testing_id}"
-  description = "Security group for all nodes in the cluster"
-  vpc_id      = module.basic_components.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  scaling_config {
+    desired_size = 1
+    max_size     = 1
+    min_size     = 1
   }
-}
 
-resource "aws_security_group_rule" "nodes_internal" {
-  description              = "Allow nodes to communicate with each other"
-  from_port                = 0
-  protocol                 = "-1"
-  security_group_id        = aws_security_group.eks_nodes_sg.id
-  source_security_group_id = aws_security_group.eks_nodes_sg.id
-  to_port                  = 65535
-  type                     = "ingress"
-}
+  ami_type       = "AL2_x86_64"
+  capacity_type  = "ON_DEMAND"
+  disk_size      = 20
+  instance_types = ["g4dn.xlarge"]
 
-resource "aws_security_group_rule" "nodes_cluster_inbound" {
-  description              = "Allow worker Kubelets and pods to receive communication from the cluster control plane"
-  from_port                = 1025
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.eks_nodes_sg.id
-  source_security_group_id = aws_security_group.eks_cluster_sg.id
-  to_port                  = 65535
-  type                     = "ingress"
-}
-
-
-# create cert for communication between agent and dcgm
-resource "tls_private_key" "private_key" {
-  algorithm = "RSA"
-}
-
-resource "local_file" "ca_key" {
-  content  = tls_private_key.private_key.private_key_pem
-  filename = "${path.module}/certs/ca.key"
-}
-
-resource "tls_self_signed_cert" "ca_cert" {
-  private_key_pem   = tls_private_key.private_key.private_key_pem
-  is_ca_certificate = true
-  subject {
-    common_name  = "dcgm-exporter-service.amazon-cloudwatch.svc"
-    organization = "Amazon CloudWatch Agent"
-  }
-  validity_period_hours = 24
-  allowed_uses = [
-    "digital_signature",
-    "key_encipherment",
-    "cert_signing",
-    "crl_signing",
-    "server_auth",
-    "client_auth",
+  depends_on = [
+    aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
+    aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
+    aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
+    aws_iam_role_policy_attachment.node_CloudWatchAgentServerPolicy
   ]
 }
 
-resource "local_file" "ca_cert_file" {
-  content  = tls_self_signed_cert.ca_cert.cert_pem
-  filename = "${path.module}/certs/ca.cert"
+resource "aws_iam_role_policy_attachment" "node_AmazonEKSWorkerNodePolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node_role.name
 }
 
-resource "tls_private_key" "server_private_key" {
-  algorithm = "RSA"
+resource "aws_iam_role_policy_attachment" "node_AmazonEKS_CNI_Policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.node_role.name
 }
 
-resource "local_file" "server_key" {
-  content  = tls_private_key.server_private_key.private_key_pem
-  filename = "${path.module}/certs/server.key"
+resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOnly" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.node_role.name
 }
 
-resource "tls_cert_request" "local_csr" {
-  private_key_pem = tls_private_key.server_private_key.private_key_pem
-  dns_names       = ["localhost", "127.0.0.1", "dcgm-exporter-service.amazon-cloudwatch.svc"]
-  subject {
-    common_name  = "dcgm-exporter-service.amazon-cloudwatch.svc"
-    organization = "Amazon CloudWatch Agent"
-  }
+resource "aws_iam_role_policy_attachment" "node_CloudWatchAgentServerPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+  role       = aws_iam_role.node_role.name
 }
 
-resource "tls_locally_signed_cert" "server_cert" {
-  cert_request_pem      = tls_cert_request.local_csr.cert_request_pem
-  ca_private_key_pem    = tls_private_key.private_key.private_key_pem
-  ca_cert_pem           = tls_self_signed_cert.ca_cert.cert_pem
-  validity_period_hours = 12
-  allowed_uses = [
-    "digital_signature",
-    "key_encipherment",
-    "server_auth",
-    "client_auth",
-  ]
-}
-
-resource "local_file" "server_cert_file" {
-  content  = tls_locally_signed_cert.server_cert.cert_pem
-  filename = "${path.module}/certs/server.cert"
-}
-
-resource "kubernetes_secret" "agent_cert" {
-  metadata {
-    name      = "amazon-cloudwatch-observability-agent-cert"
-    namespace = "amazon-cloudwatch"
-  }
-  data = {
-    "ca.crt"  = tls_self_signed_cert.ca_cert.cert_pem              #filebase64(local_file.ca_cert_file.filename)
-    "tls.crt" = tls_locally_signed_cert.server_cert.cert_pem       #filebase64(local_file.server_cert_file.filename)
-    "tls.key" = tls_private_key.server_private_key.private_key_pem #filebase64(local_file.server_key.filename)
-  }
-}
 
 
 resource "kubernetes_namespace" "namespace" {
