@@ -3,7 +3,7 @@
 
 variable "region" {
   type    = string
-  default = "us-west-2"
+  default = "us-east-1"
 }
 
 variable "k8s_version" {
@@ -23,7 +23,7 @@ variable "addon_name" {
 
 variable "addon_version" {
   type = string
-  default = "v1.1.0-eksbuild.1"
+  default = "v1.6.0-eksbuild.1"
 }
 
 variable "beta" {
