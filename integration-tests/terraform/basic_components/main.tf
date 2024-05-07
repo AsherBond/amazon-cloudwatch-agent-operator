@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT
 
+
 module "common" {
   source = "../common"
 }
@@ -21,5 +22,5 @@ data "aws_subnets" "public_subnet_ids" {
 }
 
 data "aws_security_group" "security_group" {
-  name = "vpc_security_group"
+  name = module.common.vpc_security_group
 }
