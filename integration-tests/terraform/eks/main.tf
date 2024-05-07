@@ -277,6 +277,98 @@ resource "aws_eks_addon" "this" {
   addon_version = var.addon_version
 }
 
+data "template_file" "cwagent_config" {
+  template = file(local.cwagent_config)
+  vars = {
+  }
+}
+
+resource "kubernetes_config_map" "cwagentconfig" {
+  depends_on = [
+    kubernetes_namespace.namespace,
+    kubernetes_service_account.cwagentservice
+  ]
+  metadata {
+    name      = "cwagentconfig"
+    namespace = "amazon-cloudwatch"
+  }
+  data = {
+    "cwagentconfig.json" : data.template_file.cwagent_config.rendered
+  }
+}
+
+
+resource "kubernetes_service_account" "cwagentservice" {
+  depends_on = [kubernetes_namespace.namespace]
+  metadata {
+    name      = "cloudwatch-agent"
+    namespace = "amazon-cloudwatch"
+  }
+}
+
+resource "kubernetes_cluster_role" "clusterrole" {
+  depends_on = [kubernetes_namespace.namespace]
+  metadata {
+    name = "cloudwatch-agent-role"
+  }
+  rule {
+    verbs      = ["get", "list", "watch"]
+    resources  = ["pods", "pods/logs", "nodes", "nodes/proxy", "namespaces", "endpoints"]
+    api_groups = [""]
+  }
+  rule {
+    verbs      = ["list", "watch"]
+    resources  = ["replicasets"]
+    api_groups = ["apps"]
+  }
+  rule {
+    verbs      = ["list", "watch"]
+    resources  = ["jobs"]
+    api_groups = ["batch"]
+  }
+  rule {
+    verbs      = ["get"]
+    resources  = ["nodes/proxy"]
+    api_groups = [""]
+  }
+  rule {
+    verbs      = ["create"]
+    resources  = ["nodes/stats", "configmaps", "events"]
+    api_groups = [""]
+  }
+  rule {
+    verbs          = ["get", "update"]
+    resource_names = ["cwagent-clusterleader"]
+    resources      = ["configmaps"]
+    api_groups     = [""]
+  }
+  rule {
+    verbs      = ["list", "watch"]
+    resources  = ["services"]
+    api_groups = [""]
+  }
+  rule {
+    non_resource_urls = ["/metrics"]
+    verbs             = ["get", "list", "watch"]
+  }
+}
+
+resource "kubernetes_cluster_role_binding" "rolebinding" {
+  depends_on = [kubernetes_namespace.namespace]
+  metadata {
+    name = "cloudwatch-agent-role-binding"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cloudwatch-agent-role"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "cloudwatch-agent"
+    namespace = "amazon-cloudwatch"
+  }
+}
 resource "null_resource" "validator" {
   depends_on = [
       kubernetes_cluster_role_binding.rolebinding,
