@@ -35,7 +35,7 @@ resource "aws_eks_cluster" "this" {
   }
 }
 resource "aws_security_group" "eks_cluster_sg" {
-  name        = "cwagent-eks-cluster-sg-${module.common.testing_id}"
+  name        = "cwagent-operator-eks-integ-${module.common.testing_id}"
   description = "Cluster communication with worker nodes"
   vpc_id      = module.basic_components.vpc_id
 }
@@ -63,7 +63,7 @@ resource "aws_security_group_rule" "cluster_outbound" {
 
 # EKS Node Security Group
 resource "aws_security_group" "eks_nodes_sg" {
-  name        = "cwagent-eks-node-sg-${module.common.testing_id}"
+  name        = "cwagent-operator-eks-integ-${module.common.testing_id}"
   description = "Security group for all nodes in the cluster"
   vpc_id      = module.basic_components.vpc_id
 
