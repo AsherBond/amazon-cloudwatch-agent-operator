@@ -249,6 +249,23 @@ resource "kubernetes_namespace" "namespace" {
     name = "amazon-cloudwatch"
   }
 }
+resource "null_resource" "kubectl" {
+  depends_on = [
+    aws_eks_cluster.this,
+    aws_eks_node_group.this
+  ]
+  provisioner "local-exec" {
+    command = <<-EOT
+      ${local.aws_eks} update-kubeconfig --name ${aws_eks_cluster.this.name}
+      ${local.aws_eks} list-clusters --output text
+      ${local.aws_eks} describe-cluster --name ${aws_eks_cluster.this.name} --output text
+    EOT
+  }
+}
+locals {
+   cwagent_config   = fileexists("${var.test_dir}/resources/config.json") ? "${var.test_dir}/resources/config.json" : "../default_resources/default_amazon_cloudwatch_agent.json"
+   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
+ }
 
 
 resource "aws_eks_addon" "this" {
