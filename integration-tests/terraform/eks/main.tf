@@ -585,6 +585,8 @@ locals {
   httpd_config     = "../../../../${var.test_dir}/resources/httpd.conf"
   httpd_ssl_config = "../../../../${var.test_dir}/resources/httpd-ssl.conf"
   cwagent_config   = fileexists("../../../../${var.test_dir}/resources/config.json") ? "../../../../${var.test_dir}/resources/config.json" : "../default_resources/default_amazon_cloudwatch_agent.json"
+  aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
+
 }
 
 data "template_file" "cwagent_config" {
@@ -716,8 +718,4 @@ resource "null_resource" "validator" {
     command = "go test ${var.test_dir} -eksClusterName ${aws_eks_cluster.this.name} -computeType=EKS -v -eksDeploymentStrategy=DAEMON -eksGpuType=nvidia"
   }
 }
-locals {
-   cwagent_config   = fileexists("${var.test_dir}/resources/config.json") ? "${var.test_dir}/resources/config.json" : "../default_resources/default_amazon_cloudwatch_agent.json"
-   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
- }
 
