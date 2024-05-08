@@ -18,17 +18,12 @@ data "aws_eks_cluster_auth" "this" {
   name = aws_eks_cluster.this.name
 }
 
+
+
 resource "aws_eks_cluster" "this" {
-  name     = "cwagent-eks-integ-${module.common.testing_id}"
-  role_arn = module.basic_components.role_arn
+  name     = "cwagent-operator-eks-integ-${module.common.testing_id}"
+  role_arn = local.role_arn
   version  = var.k8s_version
-  enabled_cluster_log_types = [
-    "api",
-    "audit",
-    "authenticator",
-    "controllerManager",
-    "scheduler"
-  ]
   vpc_config {
     subnet_ids         = module.basic_components.public_subnet_ids
     security_group_ids = [module.basic_components.security_group]
@@ -38,7 +33,7 @@ resource "aws_eks_cluster" "this" {
 # EKS Node Groups
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "cwagent-eks-integ-node"
+  node_group_name = "cwagent-operator-eks-integ-node"
   node_role_arn   = aws_iam_role.node_role.arn
   subnet_ids      = module.basic_components.public_subnet_ids
 
@@ -48,10 +43,10 @@ resource "aws_eks_node_group" "this" {
     min_size     = 1
   }
 
-  ami_type       = var.ami_type
+  ami_type       = "AL2_x86_64"
   capacity_type  = "ON_DEMAND"
   disk_size      = 20
-  instance_types = [var.instance_type]
+  instance_types = ["g4dn.xlarge"]
 
   depends_on = [
     aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
@@ -63,20 +58,22 @@ resource "aws_eks_node_group" "this" {
 
 # EKS Node IAM Role
 resource "aws_iam_role" "node_role" {
-  name = "cwagent-eks-Worker-Role-${module.common.testing_id}"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
+  name = "cwagent-operator-eks-Worker-Role-${module.common.testing_id}"
 
+  assume_role_policy = <<POLICY
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+POLICY
 }
 
 resource "aws_iam_role_policy_attachment" "node_AmazonEKSWorkerNodePolicy" {
@@ -586,6 +583,7 @@ locals {
   httpd_ssl_config = "${var.test_dir}/resources/httpd-ssl.conf"
   cwagent_config   = fileexists("${var.test_dir}/resources/config.json") ? "${var.test_dir}/resources/config.json" : "../default_resources/default_amazon_cloudwatch_agent.json"
   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
+  role_arn = format("%s%s", module.basic_components.role_arn, var.beta ? "-eks-beta" : "")
 
 }
 
