@@ -18,7 +18,10 @@ data "aws_eks_cluster_auth" "this" {
   name = aws_eks_cluster.this.name
 }
 
-
+locals {
+  role_arn = format("%s%s", module.basic_components.role_arn, var.beta ? "-eks-beta" : "")
+  aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
+}
 
 resource "aws_eks_cluster" "this" {
   name     = "cwagent-operator-eks-integ-${module.common.testing_id}"
