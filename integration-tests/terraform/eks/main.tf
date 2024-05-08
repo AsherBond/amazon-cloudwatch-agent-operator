@@ -128,8 +128,19 @@ resource "null_resource" "validator" {
       aws_eks_node_group.this,
       aws_eks_addon.this
   ]
+
   provisioner "local-exec" {
-    command = "go test ${var.test_dir} -eksClusterName ${aws_eks_cluster.this.name} -computeType=EKS -v -eksDeploymentStrategy=DAEMON -eksGpuType=nvidia"
+    command = <<EOT
+      go test ${var.test_dir} -eksClusterName ${aws_eks_cluster.this.name} -computeType=EKS -v -eksDeploymentStrategy=DAEMON -eksGpuType=nvidia
+
+      # Get all pods and describe them
+      kubectl get pods --all-namespaces -o wide > pods.txt
+      kubectl describe pods --all-namespaces > pods_describe.txt
+
+      # Log the contents of the files
+      cat pods.txt
+      cat pods_describe.txt
+    EOT
   }
 }
 
