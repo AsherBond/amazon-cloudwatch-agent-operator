@@ -582,9 +582,9 @@ resource "kubernetes_daemonset" "service" {
 # Template Files
 ##########################################
 locals {
-  httpd_config     = "../../../../${var.test_dir}/resources/httpd.conf"
-  httpd_ssl_config = "../../../../${var.test_dir}/resources/httpd-ssl.conf"
-  cwagent_config   = fileexists("../../../../${var.test_dir}/resources/config.json") ? "../../../../${var.test_dir}/resources/config.json" : "../default_resources/default_amazon_cloudwatch_agent.json"
+  httpd_config     = "${var.test_dir}/resources/httpd.conf"
+  httpd_ssl_config = "${var.test_dir}/resources/httpd-ssl.conf"
+  cwagent_config   = fileexists("${var.test_dir}/resources/config.json") ? "${var.test_dir}/resources/config.json" : "../default_resources/default_amazon_cloudwatch_agent.json"
   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
 
 }
