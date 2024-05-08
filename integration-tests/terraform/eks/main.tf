@@ -705,7 +705,14 @@ resource "kubernetes_cluster_role_binding" "rolebinding" {
   }
 }
 
-
+resource "aws_eks_addon" "this" {
+  depends_on = [
+    null_resource.kubectl
+  ]
+  addon_name   = var.addon_name
+  cluster_name = aws_eks_cluster.this.name
+  addon_version = var.addon_version
+}
 resource "null_resource" "validator" {
   depends_on = [
       kubernetes_cluster_role_binding.rolebinding,
