@@ -46,7 +46,7 @@ resource "aws_eks_node_group" "this" {
     min_size     = 1
   }
 
-  ami_type       = "AL2_x86_64"
+  ami_type       = "AL2_x86_64_GPU"
   capacity_type  = "ON_DEMAND"
   disk_size      = 20
   instance_types = ["g4dn.xlarge"]

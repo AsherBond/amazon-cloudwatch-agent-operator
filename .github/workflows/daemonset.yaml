@@ -1,0 +1,157 @@
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    deprecated.daemonset.template.generation: "1"
+  creationTimestamp: "2024-05-01T21:01:08Z"
+  generation: 1
+  labels:
+    k8s-app: dcgm-exporter
+    version: v1
+  name: dcgm-exporter
+  namespace: amazon-cloudwatch
+  resourceVersion: "1704573"
+  uid: ea691d02-d5a7-47bf-a58f-3bd1fd5e4de6
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: dcgm-exporter
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        k8s-app: dcgm-exporter
+        version: v1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node.kubernetes.io/instance-type
+                    operator: In
+                    values:
+                      - p2.xlarge
+                      - p2.8xlarge
+                      - p2.16xlarge
+                      - p3.2xlarge
+                      - p3.8xlarge
+                      - p3.16xlarge
+                      - p3dn.24xlarge
+                      - p4d.24xlarge
+                      - p4de.24xlarge
+                      - p5.48xlarge
+                      - g3s.xlarge
+                      - g3.4xlarge
+                      - g3.8xlarge
+                      - g3.16xlarge
+                      - g4dn.xlarge
+                      - g4dn.2xlarge
+                      - g4dn.4xlarge
+                      - g4dn.8xlarge
+                      - g4dn.16xlarge
+                      - g4dn.12xlarge
+                      - g4dn.metal
+                      - g4ad.xlarge
+                      - g4ad.2xlarge
+                      - g4ad.4xlarge
+                      - g4ad.8xlarge
+                      - g4ad.16xlarge
+                      - g5.xlarge
+                      - g5.2xlarge
+                      - g5.4xlarge
+                      - g5.8xlarge
+                      - g5.16xlarge
+                      - g5.xlarge
+                      - g5.2xlarge
+                      - g5.4xlarge
+                      - g5.8xlarge
+                      - g5.16xlarge
+                      - g5.12xlarge
+                      - g5.24xlarge
+                      - g5.48xlarge
+                      - g5g.xlarge
+                      - g5g.2xlarge
+                      - g5g.4xlarge
+                      - g5g.8xlarge
+                      - g5g.16xlarge
+                      - g5g.metal
+      containers:
+        - args:
+            - --web-config-file=/etc/dcgm-exporter/web-config.yaml
+          env:
+            - name: DCGM_EXPORTER_KUBERNETES
+              value: "true"
+            - name: DCGM_EXPORTER_LISTEN
+              value: :9400
+            - name: DCGM_EXPORTER_COLLECTORS
+              value: /etc/dcgm-exporter/dcp-metrics-included.csv
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          image: 602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/observability/dcgm-exporter:3.3.3-3.3.1-ubuntu22.04
+          imagePullPolicy: IfNotPresent
+          name: dcgm-exporter
+          ports:
+            - containerPort: 9400
+              name: metrics
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 250Mi
+            requests:
+              cpu: 250m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/lib/kubelet/pod-resources
+              name: pod-gpu-resources
+              readOnly: true
+            - mountPath: /etc/dcgm-exporter/
+              name: dcgm-config
+            - mountPath: /etc/amazon-cloudwatch-observability-dcgm-cert
+              name: dcgmtls
+              readOnly: true
+          dnsPolicy: ClusterFirst
+          nodeSelector:
+            kubernetes.io/os: linux
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          serviceAccount: dcgm-exporter-service-acct
+          serviceAccountName: dcgm-exporter-service-acct
+          terminationGracePeriodSeconds: 30
+          volumes:
+          - name: dcgmtls
+            secret:
+              defaultMode: 420
+              items:
+                - key: tls.crt
+                  path: server.crt
+                - key: tls.key
+                  path: server.key
+              secretName: amazon-cloudwatch-observability-agent-cert
+          - hostPath:
+              path: /var/lib/kubelet/pod-resources
+              type: ""
+            name: pod-gpu-resources
+          - configMap:
+              defaultMode: 420
+              name: dcgm-exporter-config-map
+            name: dcgm-config
+      updateStrategy:
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+        type: RollingUpdate
+    status:
+      currentNumberScheduled: 1
