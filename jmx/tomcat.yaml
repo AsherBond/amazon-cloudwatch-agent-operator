@@ -1,0 +1,110 @@
+---
+rules:
+  - bean: Catalina:type=Manager,host=localhost,context=*
+    mapping:
+      activeSessions:
+        metric: tomcat.sessions
+        desc: The number of active sessions.
+        unit: "sessions"
+  - bean: Catalina:type=GlobalRequestProcessor,name=*
+    mapping:
+      errorCount:
+        metric: tomcat.errors
+        desc: The number of errors encountered.
+        unit: "errors"
+  - bean: Catalina:type=GlobalRequestProcessor,name=*
+    mapping:
+      requestCount:
+        metric: tomcat.request_count
+        desc: The total requests.
+        unit: "requests"
+  - bean: Catalina:type=GlobalRequestProcessor,name=*
+    mapping:
+      maxTime:
+        metric: tomcat.max_time
+        desc: Maximum time to process a request.
+        unit: "ms"
+  - bean: Catalina:type=GlobalRequestProcessor,name=*
+    mapping:
+      processingTime:
+        metric: tomcat.processing_time
+        desc: The total processing time.
+        unit: "ms"
+  - bean: Catalina:type=GlobalRequestProcessor,name=*
+    mapping:
+      bytesSent:
+        metric: tomcat.traffic
+        desc: The number of bytes transmitted and received.
+        unit: "by"
+  - bean: Catalina:type=GlobalRequestProcessor,name=*
+    mapping:
+      bytesReceived:
+        metric: tomcat.traffic
+        desc: The number of bytes transmitted and received.
+        unit: "by"
+  - bean: Catalina:type=ThreadPool,name=*
+    mapping:
+      currentThreadCount:
+        metric: tomcat.threads
+        desc: The number of threads
+        unit: "threads"
+  - bean: Catalina:type=ThreadPool,name=*
+    mapping:
+      currentThreadsBusy:
+        metric: tomcat.threads
+        desc: The number of threads
+        unit: "threads"
+  - bean: Tomcat:type=Manager,host=localhost,context=*
+    mapping:
+      activeSessions:
+        metric: tomcat.sessions
+        desc: The number of active sessions.
+        unit: "sessions"
+  - bean: Tomcat:type=GlobalRequestProcessor,name=*
+    mapping:
+      errorCount:
+        metric: tomcat.errors
+        desc: The number of errors encountered.
+        unit: "errors"
+  - bean: Tomcat:type=GlobalRequestProcessor,name=*
+    mapping:
+      requestCount:
+        metric: tomcat.request_count
+        desc: The total requests.
+        unit: "requests"
+  - bean: Tomcat:type=GlobalRequestProcessor,name=*
+    mapping:
+      maxTime:
+        metric: tomcat.max_time
+        desc: Maximum time to process a request.
+        unit: "ms"
+  - bean: Tomcat:type=GlobalRequestProcessor,name=*
+    mapping:
+      processingTime:
+        metric: tomcat.processing_time
+        desc: The total processing time.
+        unit: "ms"
+  - bean: Tomcat:type=GlobalRequestProcessor,name=*
+    mapping:
+      bytesSent:
+        metric: tomcat.traffic
+        desc: The number of bytes transmitted and received.
+        unit: "by"
+  - bean: Tomcat:type=GlobalRequestProcessor,name=*
+    mapping:
+      bytesReceived:
+        metric: tomcat.traffic
+        desc: The number of bytes transmitted and received.
+        unit: "by"
+  - bean: Tomcat:type=ThreadPool,name=*
+    mapping:
+      currentThreadCount:
+        metric: tomcat.threads
+        desc: The number of threads
+        unit: "threads"
+  - bean: Tomcat:type=ThreadPool,name=*
+    mapping:
+      currentThreadsBusy:
+        metric: tomcat.threads
+        desc: The number of threads
+        unit: "threads"

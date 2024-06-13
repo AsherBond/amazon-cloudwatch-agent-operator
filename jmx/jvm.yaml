@@ -1,0 +1,38 @@
+---
+rules:
+  - bean: java.lang:type=ClassLoading
+    mapping:
+      LoadedClassCount:
+        metric: jvm.classes.loaded
+        desc: number of loaded classes
+        unit: "1"
+  - bean: java.lang:type=GarbageCollector,*
+    mapping:
+      CollectionTime:
+        metric: jvm.gc.collections.count
+        desc: total number of collections that have occurred
+        unit: "1"
+  - bean: java.lang:type=GarbageCollector,*
+    mapping:
+      HeapMemoryUsage:
+        metric: jvm.memory.heap
+        desc: the approximate accumulated collection elapsed time in milliseconds
+        unit: "ms"
+  - bean: java.lang:type=GarbageCollector,*
+    mapping:
+      NonHeapMemoryUsage:
+        metric: jvm.memory.nonheap
+        desc: current non-heap usage
+        unit: "by"
+  - bean: java.lang:type=Memory
+    mapping:
+      Usage:
+        metric: jvm.memory.pool
+        desc: current memory pool usage
+        unit: "by"
+  - bean: java.lang:type=Memory
+    mapping:
+      ThreadCount:
+        metric: jvm.threads.count
+        desc: number of threads
+        unit: "1"

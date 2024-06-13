@@ -1,0 +1,50 @@
+---
+rules:
+  - bean: kafka.consumer:client-id=*,type=consumer-fetch-manager-metrics
+    mapping:
+      fetch-rate:
+        metric: kafka.consumer.fetch-rate
+        desc: The number of fetch requests for all topics per second
+        unit: "1"
+  - bean: kafka.consumer:client-id=*,type=consumer-fetch-manager-metrics
+    mapping:
+      records-lag-max:
+        metric: kafka.consumer.records-lag-max
+        desc: Number of messages the consumer lags behind the producer
+        unit: "1"
+  - bean: kafka.consumer:client-id=*,type=consumer-fetch-manager-metrics
+    mapping:
+      bytes-consumed-rate:
+        metric: kafka.consumer.total.bytes-consumed-rate
+        desc: The average number of bytes consumed for all topics per second
+        unit: "by"
+  - bean: kafka.consumer:client-id=*,type=consumer-fetch-manager-metrics
+    mapping:
+      fetch-size-avg:
+        metric: kafka.consumer.total.fetch-size-avg
+        desc: The average number of bytes fetched per request for all topics
+        unit: "by"
+  - bean: kafka.consumer:client-id=*,type=consumer-fetch-manager-metrics
+    mapping:
+      records-consumed-rate:
+        metric: kafka.consumer.total.records-consumed-rate
+        desc: The average number of records consumed for all topics per second
+        unit: "1"
+  - bean: kafka.consumer:client-id=*,topic=*,type=consumer-fetch-manager-metrics
+    mapping:
+      bytes-consumed-rate:
+        metric: kafka.consumer.bytes-consumed-rate
+        desc: The average number of bytes consumed per second
+        unit: "by"
+  - bean: kafka.consumer:client-id=*,topic=*,type=consumer-fetch-manager-metrics
+    mapping:
+      fetch-size-avg:
+        metric: kafka.consumer.fetch-size-avg
+        desc: The average number of bytes fetched per request
+        unit: "by"
+  - bean: kafka.consumer:client-id=*,topic=*,type=consumer-fetch-manager-metrics
+    mapping:
+      records-consumed-rate:
+        metric: kafka.consumer.records-consumed-rate
+        desc: The average number of records consumed per second
+        unit: "by"
