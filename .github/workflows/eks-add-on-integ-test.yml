@@ -149,6 +149,7 @@ jobs:
     secrets: inherit
     with:
       test-cluster-name: 'e2e-cw-agent-test'
+      tag: ${{ inputs.tag }}
 
   java-e2e-tests2:
     # Two E2E tests should not run at the same time in the same EKS cluster
