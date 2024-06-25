@@ -27,11 +27,7 @@ on:
         required: false
         default: 'e2e-cw-agent-test'
         type: string
-      tag:
-        description: 'Staging Artifact Tag'
-        required: false
-        default: 'staging'
-        type: string
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
@@ -145,15 +141,15 @@ jobs:
     secrets: inherit
     with:
       test-java-cluster-name: 'e2e-cw-agent-test'
-      tag: ${{ inputs.tag }}
+#      tag: ${{ inputs.tag }}
 
-  java-e2e-tests2:
-    # Two E2E tests should not run at the same time in the same EKS cluster
-    concurrency:
-      group: 'e2e-cw-agent-java-operator-test'
-      cancel-in-progress: false
-    secrets: inherit
-    uses: ./.github/workflows/application-signals-java-e2e-test.yml
-    with:
-      test-java-cluster-name: 'e2e-cw-agent-test'
-      tag: ${{ inputs.tag }}
+#  java-e2e-tests2:
+#    # Two E2E tests should not run at the same time in the same EKS cluster
+#    concurrency:
+#      group: 'e2e-cw-agent-java-operator-test'
+#      cancel-in-progress: false
+#    secrets: inherit
+#    uses: ./.github/workflows/application-signals-java-e2e-test.yml
+#    with:
+#      test-java-cluster-name: 'e2e-cw-agent-test'
+#      tag: ${{ inputs.tag }}
