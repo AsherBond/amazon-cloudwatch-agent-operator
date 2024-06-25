@@ -140,16 +140,16 @@ jobs:
             cd integration-tests/terraform/eks
 
             terraform destroy -var="beta=${{ github.event.inputs.run_in_beta }}" --auto-approve
-  java-e2e-tests:
-    # Two E2E tests should not run at the same time in the same EKS cluster
-    concurrency:
-      group: 'e2e-cw-agent-java-operator-test'
-      cancel-in-progress: false
+  JavaEKSEndToEndTest:
+    name: "AppSignals E2E EKS Test"
+    needs: [ BuildAndUpload, BuildDocker ]
+    uses: ./.github/workflows/application-signals-java-e2e-eks-test.yml
+    permissions:
+      id-token: write
+      contents: read
     secrets: inherit
-    uses: ./.github/workflows/application-signals-java-e2e-test.yml
     with:
-      test-java-cluster-name: ${{ inputs.test-java-cluster-name }}
-      tag: ${{ inputs.tag }}
+      test-cluster-name: 'e2e-cw-agent-test'
 
   java-e2e-tests2:
     # Two E2E tests should not run at the same time in the same EKS cluster
