@@ -150,3 +150,14 @@ jobs:
     with:
       test-java-cluster-name: ${{ inputs.test-java-cluster-name }}
       tag: ${{ inputs.tag }}
+
+  java-e2e-tests2:
+    # Two E2E tests should not run at the same time in the same EKS cluster
+    concurrency:
+      group: 'e2e-cw-agent-java-operator-test'
+      cancel-in-progress: false
+    secrets: inherit
+    uses: ./.github/workflows/application-signals-java-e2e-test.yml
+    with:
+      test-java-cluster-name: 'e2e-cw-agent-test'
+      tag: ${{ inputs.tag }}

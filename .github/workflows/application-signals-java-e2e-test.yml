@@ -78,9 +78,10 @@ jobs:
       - name: Set up kubeconfig
         run: |
           aws eks list-clusters --region us-west-2
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
+#          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           aws eks list-clusters --region us-west-2
-          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }} --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
+          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
+#          --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
 
       - name: Install eksctl
         run: |
@@ -89,20 +90,20 @@ jobs:
           tar -xzf eksctl_Linux_amd64.tar.gz -C ${{ github.workspace }}/eksctl && rm eksctl_Linux_amd64.tar.gz
           echo "${{ github.workspace }}/eksctl" >> $GITHUB_PATH
 
-#      - name: Create role for AWS access from the sample app
-#        id: create_service_account
-#        run: |
-#          aws eks list-clusters --region us-west-2
+      - name: Create role for AWS access from the sample app
+        id: create_service_account
+        run: |
+          aws eks list-clusters --region us-west-2
 #          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
 #          aws eks list-clusters --region us-west-2
-#          eksctl create iamserviceaccount \
-#          --name service-account-${{ env.TESTING_ID }} \
-#          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
-#          --cluster ${{ inputs.test-java-cluster-name }} \
-#          --role-name eks-s3-access-${{ env.TESTING_ID }} \
-#          --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
-#          --region ${{ env.AWS_DEFAULT_REGION }} \
-#          --approve
+          eksctl create iamserviceaccount \
+          --name service-account-${{ env.TESTING_ID }} \
+          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
+          --cluster ${{ inputs.test-java-cluster-name }} \
+          --role-name eks-s3-access-${{ env.TESTING_ID }} \
+          --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
+          --region ${{ env.AWS_DEFAULT_REGION }} \
+          --approve
 
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
@@ -112,7 +113,7 @@ jobs:
       - name: Deploy sample app via terraform
         working-directory: terraform/eks
         run: |
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
+#          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           terraform init
           terraform validate
           terraform apply -auto-approve \
@@ -130,7 +131,7 @@ jobs:
       - name: Enable App Signals
         working-directory: enablement-script/scripts/eks/appsignals
         run: |
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
+#          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           ./enable-app-signals.sh \
           ${{ inputs.test-java-cluster-name }} \
           ${{ env.AWS_DEFAULT_REGION }} \
