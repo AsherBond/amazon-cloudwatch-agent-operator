@@ -25,11 +25,7 @@ on:
         description: "Run in EKS Addon Beta environment"
       test-java-cluster-name:
         required: false
-        default: 'cw-agent-eks-addon-test-beta-cluster'
-        type: string
-      test-python-cluster-name:
-        required: false
-        default: 'cw-agent-eks-addon-test-beta-cluster'
+        default: 'e2e-cw-agent-test'
         type: string
       tag:
         description: 'Staging Artifact Tag'
