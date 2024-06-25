@@ -77,10 +77,10 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          aws eks list-clusters  --region us-west-2
+          aws eks list-clusters --region us-west-2
           export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
-          aws eks list-clusters  --region us-west-2
-          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
+          aws eks list-clusters --region us-west-2
+          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }} --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
 
       - name: Install eksctl
         run: |
