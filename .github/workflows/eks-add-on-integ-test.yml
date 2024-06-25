@@ -142,7 +142,6 @@ jobs:
             terraform destroy -var="beta=${{ github.event.inputs.run_in_beta }}" --auto-approve
   JavaEKSEndToEndTest:
     name: "AppSignals E2E EKS Test"
-    needs: [ BuildAndUpload, BuildDocker ]
     uses: ./.github/workflows/application-signals-java-e2e-test.yml
     permissions:
       id-token: write
