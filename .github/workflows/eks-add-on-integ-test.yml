@@ -23,6 +23,10 @@ on:
         type: boolean
         default: true
         description: "Run in EKS Addon Beta environment"
+      test-java-cluster-name:
+        required: false
+        default: 'e2e-cw-agent-test'
+        type: string
       tag:
         description: 'Staging Artifact Tag'
         required: false
@@ -140,7 +144,7 @@ jobs:
       contents: read
     secrets: inherit
     with:
-      test-cluster-name: 'e2e-cw-agent-test'
+      test-java-cluster-name: 'e2e-cw-agent-test'
       tag: ${{ inputs.tag }}
 
   java-e2e-tests2:
