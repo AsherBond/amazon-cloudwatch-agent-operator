@@ -23,10 +23,6 @@ on:
         type: boolean
         default: true
         description: "Run in EKS Addon Beta environment"
-      test-java-cluster-name:
-        required: false
-        default: 'e2e-cw-agent-test'
-        type: string
       tag:
         description: 'Staging Artifact Tag'
         required: false
