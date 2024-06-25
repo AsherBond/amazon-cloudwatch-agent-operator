@@ -76,7 +76,9 @@ jobs:
         run: echo KUBECONFIG="${{ github.workspace }}/.kube/config" >> $GITHUB_ENV
 
       - name: Set up kubeconfig
-        run: aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
+        run: |
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
+          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
 
       - name: Install eksctl
         run: |
@@ -151,7 +153,7 @@ jobs:
 
       - name: Patch the ADOT image and restart CloudWatch pods
         run: |
-          kubectl patch deploy -namazon-cloudwatch amazon-cloudwatch-observability-controller-manager --type='json' \
+          kubectl patch deploy -n amazon-cloudwatch amazon-cloudwatch-observability-controller-manager --type='json' \
           -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args/1", "value": "--auto-instrumentation-java-image=${{ env.APPLICATION_SIGNALS_ADOT_IMAGE }}"}]'
           kubectl delete pods --all -n amazon-cloudwatch
           sleep 10
