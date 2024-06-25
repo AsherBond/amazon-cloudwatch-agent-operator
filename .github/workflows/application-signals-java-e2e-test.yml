@@ -76,10 +76,7 @@ jobs:
         run: echo KUBECONFIG="${{ github.workspace }}/.kube/config" >> $GITHUB_ENV
 
       - name: Set up kubeconfig
-        run: |
-          aws eks list-clusters --region us-west-2
-          aws eks list-clusters --region us-west-2
-          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
+        run: aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
 
       - name: Install eksctl
         run: |
@@ -91,7 +88,6 @@ jobs:
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
-          aws eks list-clusters --region us-west-2
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
           --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
@@ -118,7 +114,7 @@ jobs:
             -var="eks_cluster_name=${{ inputs.test-java-cluster-name }}" \
             -var="eks_cluster_context_name=$(kubectl config current-context)" \
             -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
-            -var="service_account_aws_access=service-account-us-east-1-8167396378-23" \
+            -var="service_account_aws_access=service-account-${{ env.TESTING_ID }}" \
             -var="sample_app_image=${{ env.SAMPLE_APP_FRONTEND_SERVICE_IMAGE }}" \
             -var="sample_remote_app_image=${{ env.SAMPLE_APP_REMOTE_SERVICE_IMAGE }}"
 
@@ -152,7 +148,7 @@ jobs:
 
       - name: Patch the ADOT image and restart CloudWatch pods
         run: |
-          kubectl patch deploy -n amazon-cloudwatch amazon-cloudwatch-observability-controller-manager --type='json' \
+          kubectl patch deploy -namazon-cloudwatch amazon-cloudwatch-observability-controller-manager --type='json' \
           -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args/1", "value": "--auto-instrumentation-java-image=${{ env.APPLICATION_SIGNALS_ADOT_IMAGE }}"}]'
           kubectl delete pods --all -n amazon-cloudwatch
           sleep 10
@@ -195,12 +191,12 @@ jobs:
           echo "NEW_CW_AGENT_OPERATOR_IMAGE"=$(kubectl get pods -n amazon-cloudwatch -l app.kubernetes.io/name=amazon-cloudwatch-observability -o json | \
           jq '.items[0].status.containerStatuses[0].image') >> $GITHUB_ENV
 
-        #      - name: Check if CW Agent Operator image has changed
-        #        run: |
-        #          if [ ${{ env.OLD_CW_AGENT_OPERATOR_IMAGE }} = ${{ env.NEW_CW_AGENT_OPERATOR_IMAGE }} ]; then
-        #            echo "Operator image did not change"
-        #            exit 1
-        #          fi
+#      - name: Check if CW Agent Operator image has changed
+#        run: |
+#          if [ ${{ env.OLD_CW_AGENT_OPERATOR_IMAGE }} = ${{ env.NEW_CW_AGENT_OPERATOR_IMAGE }} ]; then
+#            echo "Operator image did not change"
+#            exit 1
+#          fi
 
       - name: Get the sample app endpoint
         run: |
@@ -302,7 +298,6 @@ jobs:
         continue-on-error: true
         working-directory: enablement-script/scripts/eks/appsignals
         run: |
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           ./clean-app-signals.sh \
           ${{ inputs.test-java-cluster-name }} \
           ${{ env.AWS_DEFAULT_REGION }} \
