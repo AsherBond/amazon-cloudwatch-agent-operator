@@ -89,18 +89,20 @@ jobs:
           tar -xzf eksctl_Linux_amd64.tar.gz -C ${{ github.workspace }}/eksctl && rm eksctl_Linux_amd64.tar.gz
           echo "${{ github.workspace }}/eksctl" >> $GITHUB_PATH
 
-      - name: Create role for AWS access from the sample app
-        id: create_service_account
-        run: |
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
-          eksctl create iamserviceaccount \
-          --name service-account-${{ env.TESTING_ID }} \
-          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
-          --cluster ${{ inputs.test-java-cluster-name }} \
-          --role-name eks-s3-access-${{ env.TESTING_ID }} \
-          --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
-          --region ${{ env.AWS_DEFAULT_REGION }} \
-          --approve
+#      - name: Create role for AWS access from the sample app
+#        id: create_service_account
+#        run: |
+#          aws eks list-clusters --region us-west-2
+#          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
+#          aws eks list-clusters --region us-west-2
+#          eksctl create iamserviceaccount \
+#          --name service-account-${{ env.TESTING_ID }} \
+#          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
+#          --cluster ${{ inputs.test-java-cluster-name }} \
+#          --role-name eks-s3-access-${{ env.TESTING_ID }} \
+#          --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
+#          --region ${{ env.AWS_DEFAULT_REGION }} \
+#          --approve
 
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
@@ -120,7 +122,7 @@ jobs:
             -var="eks_cluster_name=${{ inputs.test-java-cluster-name }}" \
             -var="eks_cluster_context_name=$(kubectl config current-context)" \
             -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
-            -var="service_account_aws_access=service-account-${{ env.TESTING_ID }}" \
+            -var="service_account_aws_access=service-account-us-east-1-8167396378-23" \
             -var="sample_app_image=${{ env.SAMPLE_APP_FRONTEND_SERVICE_IMAGE }}" \
             -var="sample_remote_app_image=${{ env.SAMPLE_APP_REMOTE_SERVICE_IMAGE }}"
 
