@@ -23,6 +23,19 @@ on:
         type: boolean
         default: true
         description: "Run in EKS Addon Beta environment"
+      test-java-cluster-name:
+        required: false
+        default: 'cw-agent-eks-addon-test-beta-cluster'
+        type: string
+      test-python-cluster-name:
+        required: false
+        default: 'cw-agent-eks-addon-test-beta-cluster'
+        type: string
+      tag:
+        description: 'Staging Artifact Tag'
+        required: false
+        default: 'staging'
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
@@ -127,3 +140,13 @@ jobs:
             cd integration-tests/terraform/eks
 
             terraform destroy -var="beta=${{ github.event.inputs.run_in_beta }}" --auto-approve
+  java-e2e-tests:
+    # Two E2E tests should not run at the same time in the same EKS cluster
+    concurrency:
+      group: 'e2e-cw-agent-java-operator-test'
+      cancel-in-progress: false
+    secrets: inherit
+    uses: ./.github/workflows/application-signals-java-e2e-test.yml
+    with:
+      test-java-cluster-name: ${{ inputs.test-java-cluster-name }}
+      tag: ${{ inputs.tag }}

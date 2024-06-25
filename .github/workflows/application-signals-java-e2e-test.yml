@@ -51,7 +51,7 @@ jobs:
       - name: Download enablement script
         uses: actions/checkout@v4
         with:
-          repository: aws-observability/application-signals-demo
+          repository: c
           ref: main
           path: enablement-script
           sparse-checkout: |
@@ -88,6 +88,7 @@ jobs:
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
           --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
@@ -105,6 +106,7 @@ jobs:
       - name: Deploy sample app via terraform
         working-directory: terraform/eks
         run: |
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           terraform init
           terraform validate
           terraform apply -auto-approve \
@@ -122,6 +124,7 @@ jobs:
       - name: Enable App Signals
         working-directory: enablement-script/scripts/eks/appsignals
         run: |
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           ./enable-app-signals.sh \
           ${{ inputs.test-java-cluster-name }} \
           ${{ env.AWS_DEFAULT_REGION }} \
@@ -298,6 +301,7 @@ jobs:
         continue-on-error: true
         working-directory: enablement-script/scripts/eks/appsignals
         run: |
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           ./clean-app-signals.sh \
           ${{ inputs.test-java-cluster-name }} \
           ${{ env.AWS_DEFAULT_REGION }} \

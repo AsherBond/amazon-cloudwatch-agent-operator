@@ -19,7 +19,7 @@ data "aws_eks_cluster_auth" "this" {
 }
 
 resource "aws_eks_cluster" "this" {
-  name     = "cwagent-operator-eks-integ-${module.common.testing_id}"
+  name     = "e2e-cw-agent-eks-test${module.common.testing_id}"
   role_arn = local.role_arn
   version  = var.k8s_version
   vpc_config {
@@ -31,7 +31,7 @@ resource "aws_eks_cluster" "this" {
 # EKS Node Groups
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "cwagent-operator-eks-integ-node"
+  node_group_name = "e2e-cw-agent-eks-node"
   node_role_arn   = aws_iam_role.node_role.arn
   subnet_ids      = module.basic_components.public_subnet_ids
 
