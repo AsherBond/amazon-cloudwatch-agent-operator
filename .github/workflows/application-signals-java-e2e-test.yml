@@ -113,7 +113,6 @@ jobs:
       - name: Deploy sample app via terraform
         working-directory: terraform/eks
         run: |
-#          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           terraform init
           terraform validate
           terraform apply -auto-approve \
@@ -131,7 +130,6 @@ jobs:
       - name: Enable App Signals
         working-directory: enablement-script/scripts/eks/appsignals
         run: |
-#          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           ./enable-app-signals.sh \
           ${{ inputs.test-java-cluster-name }} \
           ${{ env.AWS_DEFAULT_REGION }} \
