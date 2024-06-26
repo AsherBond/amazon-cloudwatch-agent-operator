@@ -88,7 +88,6 @@ jobs:
           aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
           pwd
           echo ${{ inputs.test-java-cluster-name }
-          echo env.AWS_DEFAULT_REGION
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
           --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
