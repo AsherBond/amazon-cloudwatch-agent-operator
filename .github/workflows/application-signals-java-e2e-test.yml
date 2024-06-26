@@ -90,6 +90,8 @@ jobs:
           pwd
           echo ${{ inputs.test-java-cluster-name }}
           export AWS_ENP=
+          kubectl edit -n kube-system configmap/aws-auth
+          kubectl edit -n ${{ env.SAMPLE_APP_NAMESPACE }}  configmap/aws-auth
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
           --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
