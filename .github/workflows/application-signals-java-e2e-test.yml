@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 env:
-  AWS_DEFAULT_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-west-2
   APP_SIGNALS_E2E_TEST_ACCOUNT_ID: ${{ secrets.APP_SIGNALS_E2E_TEST_ACCOUNT_ID }}
   SAMPLE_APP_NAMESPACE: sample-app-namespace
   SAMPLE_APP_FRONTEND_SERVICE_IMAGE: ${{ secrets.APP_SIGNALS_E2E_SAMPLE_APP_FRONTEND_SVC_IMG }}
@@ -87,7 +87,6 @@ jobs:
           aws eks list-clusters --region us-east-1
           aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
           pwd
-          export AWS_ENP=
           export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
