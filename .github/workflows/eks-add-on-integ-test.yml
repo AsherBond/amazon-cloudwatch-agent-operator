@@ -25,7 +25,7 @@ on:
         description: "Run in EKS Addon Beta environment"
       test-java-cluster-name:
         required: false
-        default: 'e2e-cw-agent-test'
+        default: 'cw-agent-eks-addon-test-beta-cluster'
         type: string
 
 
@@ -140,7 +140,7 @@ jobs:
       contents: read
     secrets: inherit
     with:
-      test-java-cluster-name: 'e2e-cw-agent-test'
+      test-java-cluster-name: 'cw-agent-eks-addon-test-beta-cluster'
 #      tag: ${{ inputs.tag }}
 
 #  java-e2e-tests2:
