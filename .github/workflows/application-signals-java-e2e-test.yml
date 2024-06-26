@@ -97,7 +97,8 @@ jobs:
           --role-name eks-s3-access-${{ env.TESTING_ID }} \
           --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
           --region us-east-1 \
-          --approve
+          --approve \
+          --verbose 4
 
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
