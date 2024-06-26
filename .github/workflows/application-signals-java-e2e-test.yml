@@ -90,7 +90,6 @@ jobs:
           aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
           pwd
           export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com    
-          aws eks list-clusters --region us-east-1
           unset AWS_ENDPOINT_URL
           echo ${{ inputs.test-java-cluster-name }}
           eksctl create iamserviceaccount \
