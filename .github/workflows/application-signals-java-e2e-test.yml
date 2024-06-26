@@ -84,9 +84,11 @@ jobs:
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
-          aws eks list-clusters  --region us-east-1
-          aws eks list-clusters  --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
+          aws eks list-clusters --region us-east-1
+          aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
+          pwd
           export AWS_ENP=
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
           --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
