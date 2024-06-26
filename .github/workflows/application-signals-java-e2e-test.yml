@@ -75,6 +75,7 @@ jobs:
         run: |
           export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
           aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}
+          arn:aws:eks:us-west-2:654654176582:cluster/cw-agent-eks-addon-test-beta-cluster
 
       - name: Install eksctl
         run: |
@@ -89,7 +90,8 @@ jobs:
           aws eks list-clusters --region us-east-1
           aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
           pwd
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com          
+          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com    
+          aws eks list-clusters --region us-west-2
           echo ${{ inputs.test-java-cluster-name }}
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
