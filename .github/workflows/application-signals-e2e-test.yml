@@ -11,6 +11,10 @@ on:
         required: false
         default: 'e2e-cw-agent-operator-test'
         type: string
+      test-java-beta-cluster-name:
+          required: false
+          default: 'cw-agent-eks-addon-test-beta-cluster'
+          type: string
       test-python-cluster-name:
         required: false
         default: 'e2e-cw-agent-operator-python-test'
@@ -36,7 +40,16 @@ jobs:
     with:
       test-java-cluster-name: ${{ inputs.test-java-cluster-name }}
       tag: ${{ inputs.tag }}
-
+  java-e2e-tests:
+    # Two E2E tests should not run at the same time in the same EKS cluster
+    concurrency:
+      group: 'e2e-cw-agent-java-operator-test'
+      cancel-in-progress: false
+    secrets: inherit
+    uses: ./.github/workflows/application-signals-java-e2e-test.yml
+    with:
+      test-java-cluster-name: ${{ inputs.test-java-cluster-name }}
+      tag: ${{ inputs.tag }}
   python-e2e-tests:
     # Two E2E tests should not run at the same time in the same EKS cluster
     concurrency:
