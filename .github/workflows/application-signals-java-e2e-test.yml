@@ -68,6 +68,24 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.TEST_ACCOUNT }}:role/${{ secrets.APP_SIGNALS_E2E_TEST_ROLE_NAME }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Checkout the Amazon CloudWatch Agent Operator repository
+        uses: actions/checkout@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.TEST_ACCOUNT }}:role/${{ secrets.APP_SIGNALS_E2E_TEST_ROLE_NAME }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          fetch-depth: 0
+
       # local directory to store the kubernetes config
       - name: Create kubeconfig directory
         run: mkdir -p ${{ github.workspace }}/.kube
@@ -97,14 +115,30 @@ jobs:
           --region ${{ env.AWS_DEFAULT_REGION }} \
           --approve
 
-      - name: Set up terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
 
-      - name: Deploy sample app via terraform
-        working-directory: terraform/eks
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Deploy sample app via Terraform
+
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing files in $(pwd):"
+          ls -la
+          
+          aws sts get-caller-identity
+          kubectl config current-context          
+          
+          echo "wooo"
+          cd integration-tests/terraform/pulse
+          aws eks list-clusters --endpoint https://api.beta.us-west-2.wesley.amazonaws.com --region us-west-2
+          echo "Contents of main.tf:"
+          cat main.tf || echo "main.tf not found"
+          
+          echo "Contents of variables.tf:"
+          cat variables.tf || echo "variables.tf not found"
+          
+          
           terraform init
           terraform validate
           terraform apply -auto-approve \

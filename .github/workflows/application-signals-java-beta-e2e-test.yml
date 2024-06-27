@@ -67,6 +67,23 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ env.TEST_ACCOUNT }}:role/${{ secrets.APP_SIGNALS_E2E_TEST_ROLE_NAME }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Checkout the Amazon CloudWatch Agent Operator repository
+        uses: actions/checkout@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.TEST_ACCOUNT }}:role/${{ secrets.APP_SIGNALS_E2E_TEST_ROLE_NAME }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          fetch-depth: 0
 
       # local directory to store the kubernetes config
       - name: Create kubeconfig directory
@@ -77,19 +94,8 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://api.beta.us-west-2.wesley.amazonaws.com  --kubeconfig /home/runner/.kube/config
-          echo "Kubeconfig identity below"
-          aws sts get-caller-identity
-          pwd
-          ls 
-          echo "1"
-          ls ~/
-          echo "2"
-          ls ~/.
-          sleep 10
-          cat ~/.kube/config
-          sed -i 's#https://.*\.eks\..*\.amazonaws\.com#https://api.beta.us-west-2.wesley.amazonaws.com#g' ~/.kube/config
-          cat ~/.kube/config
+          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://api.beta.us-west-2.wesley.amazonaws.com  
+       
 
 
       - name: Install eksctl
@@ -100,72 +106,27 @@ jobs:
           echo "${{ github.workspace }}/eksctl" >> $GITHUB_PATH
 
 
+ 
 
-
-      - name: Create role for AWS access from the sample app
-        id: create_service_account
+      - name: Deploy sample app via Terraform
         run: |
-          #!/bin/bash
+          echo "Current directory: $(pwd)"
+          echo "Listing files in $(pwd):"
+          ls -la
           
-          # Variables
-          CLUSTER_NAME="cw-agent-eks-addon-test-beta-cluster"
-          REGION="us-west-2"
-          ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-          OIDC_PROVIDER=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.identity.oidc.issuer" --output text | sed -e "s/^https:\/\///")
-          TESTING_ID=${{ env.TESTING_ID }}
-          SAMPLE_APP_NAMESPACE= sample-app-namespace
+          aws sts get-caller-identity
+          kubectl config current-context          
           
-          # Create trust policy JSON file
-          cat <<EOF > trust-policy.json
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Federated": "arn:aws:iam::$ACCOUNT_ID:oidc-provider/$OIDC_PROVIDER"
-                },
-                "Action": "sts:AssumeRoleWithWebIdentity",
-                "Condition": {
-                  "StringEquals": {
-                    "$OIDC_PROVIDER:sub": "system:serviceaccount:$SAMPLE_APP_NAMESPACE:service-account-$TESTING_ID"
-                  }
-                }
-              }
-            ]
-          }
-          EOF
+          echo "wooo"
+          cd integration-tests/terraform/pulse
+          aws eks list-clusters --endpoint https://api.beta.us-west-2.wesley.amazonaws.com --region us-west-2
+          echo "Contents of main.tf:"
+          cat main.tf || echo "main.tf not found"
           
-          # Create IAM role
-          aws iam create-role --role-name eks-s3-access-$TESTING_ID --assume-role-policy-document file://trust-policy.json
+          echo "Contents of variables.tf:"
+          cat variables.tf || echo "variables.tf not found"
           
-          # Attach policy to the role
-          aws iam attach-role-policy --role-name eks-s3-access-$TESTING_ID --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
           
-          # Create service account YAML manifest
-          cat <<EOF > service-account.yaml
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: service-account-$TESTING_ID
-            namespace: $SAMPLE_APP_NAMESPACE
-            annotations:
-              eks.amazonaws.com/role-arn: arn:aws:iam::$ACCOUNT_ID:role/eks-s3-access-$TESTING_ID
-          EOF
-          
-          # Apply the service account
-          kubectl apply -f service-account.yaml
-          
-          echo "IAM service account created and configured successfully."
-
-      - name: Set up terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-
-      - name: Deploy sample app via terraform
-        working-directory: terraform/eks
-        run: |
           terraform init
           terraform validate
           terraform apply -auto-approve \
@@ -175,7 +136,6 @@ jobs:
             -var="eks_cluster_name=${{ inputs.test-java-cluster-name }}" \
             -var="eks_cluster_context_name=$(kubectl config current-context)" \
             -var="test_namespace=${{ env.SAMPLE_APP_NAMESPACE }}" \
-            -var="service_account_aws_access=service-account-${{ env.TESTING_ID }}" \
             -var="sample_app_image=${{ env.SAMPLE_APP_FRONTEND_SERVICE_IMAGE }}" \
             -var="sample_remote_app_image=${{ env.SAMPLE_APP_REMOTE_SERVICE_IMAGE }}"
 
