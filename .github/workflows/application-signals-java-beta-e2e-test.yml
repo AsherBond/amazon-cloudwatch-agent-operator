@@ -78,6 +78,8 @@ jobs:
       - name: Set up kubeconfig
         run: |
           aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://api.beta.us-west-2.wesley.amazonaws.com  --kubeconfig /home/runner/.kube/config
+          echo "Kubeconfig identity below"
+          aws sts get-caller-identity
           pwd
           ls 
           echo "1"
@@ -87,6 +89,7 @@ jobs:
           sleep 10
           cat ~/.kube/config
           sed -i 's#https://.*\.eks\..*\.amazonaws\.com#https://api.beta.us-west-2.wesley.amazonaws.com#g' ~/.kube/config
+          cat ~/.kube/config
 
 
       - name: Install eksctl
@@ -96,26 +99,64 @@ jobs:
           tar -xzf eksctl_Linux_amd64.tar.gz -C ${{ github.workspace }}/eksctl && rm eksctl_Linux_amd64.tar.gz
           echo "${{ github.workspace }}/eksctl" >> $GITHUB_PATH
 
+
+
+
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
-          aws eks list-clusters --region us-east-1
-          aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
-          export KUBECONFIG_CLUSTER_ENDPOINT=https://api.beta.us-west-2.wesley.amazonaws.com
-          eksctl get iamidentitymapping --cluster ${{ inputs.test-java-cluster-name }}
-          aws sts get-caller-identity
-          sleep 5
-          aws eks list-clusters --region us-west-2 
-          eksctl version
-          eksctl create iamserviceaccount \
-          --name service-account-${{ env.TESTING_ID }} \
-          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
-          --cluster ${{ inputs.test-java-cluster-name }} \
-          --role-name eks-s3-access-${{ env.TESTING_ID }} \
-          --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
-          --region ${{ env.AWS_DEFAULT_REGION }} \
-          --approve
+          #!/bin/bash
+          
+          # Variables
+          CLUSTER_NAME="cw-agent-eks-addon-test-beta-cluster"
+          REGION="us-west-2"
+          ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+          OIDC_PROVIDER=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.identity.oidc.issuer" --output text | sed -e "s/^https:\/\///")
+          TESTING_ID=${{ env.TESTING_ID }}
+          SAMPLE_APP_NAMESPACE= sample-app-namespace
+          
+          # Create trust policy JSON file
+          cat <<EOF > trust-policy.json
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::$ACCOUNT_ID:oidc-provider/$OIDC_PROVIDER"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "$OIDC_PROVIDER:sub": "system:serviceaccount:$SAMPLE_APP_NAMESPACE:service-account-$TESTING_ID"
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+          
+          # Create IAM role
+          aws iam create-role --role-name eks-s3-access-$TESTING_ID --assume-role-policy-document file://trust-policy.json
+          
+          # Attach policy to the role
+          aws iam attach-role-policy --role-name eks-s3-access-$TESTING_ID --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+          
+          # Create service account YAML manifest
+          cat <<EOF > service-account.yaml
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: service-account-$TESTING_ID
+            namespace: $SAMPLE_APP_NAMESPACE
+            annotations:
+              eks.amazonaws.com/role-arn: arn:aws:iam::$ACCOUNT_ID:role/eks-s3-access-$TESTING_ID
+          EOF
+          
+          # Apply the service account
+          kubectl apply -f service-account.yaml
+          
+          echo "IAM service account created and configured successfully."
 
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v3
@@ -211,13 +252,13 @@ jobs:
           echo "NEW_CW_AGENT_OPERATOR_IMAGE"=$(kubectl get pods -n amazon-cloudwatch -l app.kubernetes.io/name=amazon-cloudwatch-observability -o json | \
           jq '.items[0].status.containerStatuses[0].image') >> $GITHUB_ENV
 
-#      - name: Check if CW Agent Operator image has changed
-#        run: |
-#          if [ ${{ env.OLD_CW_AGENT_OPERATOR_IMAGE }} = ${{ env.NEW_CW_AGENT_OPERATOR_IMAGE }} ]; then
-#            echo "Operator image did not change"
-#            exit 1
-#          fi
-        
+        #      - name: Check if CW Agent Operator image has changed
+        #        run: |
+        #          if [ ${{ env.OLD_CW_AGENT_OPERATOR_IMAGE }} = ${{ env.NEW_CW_AGENT_OPERATOR_IMAGE }} ]; then
+        #            echo "Operator image did not change"
+        #            exit 1
+        #          fi
+
       - name: Get the sample app endpoint
         run: |
           echo "APP_ENDPOINT=$(terraform output sample_app_endpoint)" >> $GITHUB_ENV
@@ -233,7 +274,7 @@ jobs:
               echo "Max attempts reached"
               exit 1
             fi
-
+          
             printf '.'
             attempt_counter=$(($attempt_counter+1))
             sleep 10
