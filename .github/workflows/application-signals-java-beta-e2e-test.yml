@@ -77,7 +77,17 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://sts.isoe-west-1.amazonaws.com
+          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://api.beta.us-west-2.wesley.amazonaws.com  --kubeconfig /home/runner/.kube/config
+          pwd
+          ls 
+          echo "1"
+          ls ~/
+          echo "2"
+          ls ~/.
+          sleep 10
+          cat ~/.kube/config
+          sed -i 's#https://.*\.eks\..*\.amazonaws\.com#https://api.beta.us-west-2.wesley.amazonaws.com#g' ~/.kube/config
+
 
       - name: Install eksctl
         run: |
@@ -89,7 +99,15 @@ jobs:
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
+          aws eks list-clusters --region us-east-1
+          aws eks list-clusters --region us-west-2 --endpoint https://api.beta.us-west-2.wesley.amazonaws.com
           export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
+          export KUBECONFIG_CLUSTER_ENDPOINT=https://api.beta.us-west-2.wesley.amazonaws.com
+          eksctl get iamidentitymapping --cluster ${{ inputs.test-java-cluster-name }}
+          aws sts get-caller-identity
+          sleep 5
+          aws eks list-clusters --region us-west-2 
+          eksctl version
           eksctl create iamserviceaccount \
           --name service-account-${{ env.TESTING_ID }} \
           --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \

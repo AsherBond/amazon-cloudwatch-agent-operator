@@ -46,7 +46,7 @@ jobs:
       group: 'cw-agent-eks-addon-test-beta-cluster-operator-test'
       cancel-in-progress: false
     secrets: inherit
-    uses: ./.github/workflows/application-signals-java-e2e-test.yml
+    uses: ./.github/workflows/application-signals-java-beta-e2e-test.yml
     with:
       test-java-cluster-name: ${{ inputs.test-java-beta-cluster-name }}
       tag: ${{ inputs.tag }}
