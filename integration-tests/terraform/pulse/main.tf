@@ -36,10 +36,6 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  endpoints {
-    eks = "https://api.beta.us-west-2.wesley.amazonaws.com"
-    # Add other AWS service endpoints as needed
-  }
 }
 
 # get eks cluster
@@ -213,7 +209,6 @@ resource "kubernetes_deployment" "sample_remote_app_deployment" {
         }
       }
       spec {
-        service_account_name = var.service_account_aws_access
         container {
           name = "back-end"
           image = var.sample_remote_app_image
