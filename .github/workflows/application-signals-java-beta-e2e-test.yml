@@ -109,7 +109,9 @@ jobs:
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
-          integration-tests/terraform/pulse/create_service_account.sh \
+          
+          cd integration-tests/terraform/pulse
+          ./create_service_account.sh \
           service-account-${{ env.TESTING_ID }} \
           ${{ env.SAMPLE_APP_NAMESPACE }} \
           ${{ inputs.test-java-cluster-name }} \
