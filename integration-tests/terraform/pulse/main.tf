@@ -186,7 +186,7 @@ resource "kubernetes_deployment" "sample_app_deployment" {
       }
 
       spec {
-        containers {
+        container {
           name  = "back-end"
           image = var.sample_app_image
           image_pull_policy = "Always"
