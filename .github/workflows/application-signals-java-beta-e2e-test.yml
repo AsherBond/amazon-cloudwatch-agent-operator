@@ -107,19 +107,6 @@ jobs:
 
 
 
-      - name: Create role for AWS access from the sample app
-        id: create_service_account
-        run: |
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
-          eksctl create iamserviceaccount \
-          --name service-account-${{ env.TESTING_ID }} \
-          --namespace ${{ env.SAMPLE_APP_NAMESPACE }} \
-          --cluster ${{ inputs.test-java-cluster-name }} \
-          --role-name eks-s3-access-${{ env.TESTING_ID }} \
-          --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
-          --region ${{ env.AWS_DEFAULT_REGION }} \
-          --approve
-
       - name: Deploy sample app via Terraform
         run: |
           echo "Current directory: $(pwd)"

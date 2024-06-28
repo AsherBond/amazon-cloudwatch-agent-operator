@@ -43,8 +43,23 @@ provider "google" {
 
 provider "aws" {
   region = var.aws_region
+  endpoints {
+    eks = "https://api.beta.us-west-2.wesley.amazonaws.com"
+    # Add other AWS service endpoints as needed
+  }
 }
 
+resource "kubernetes_service_account" "example_service_account" {
+  metadata {
+    name      = "service-account-${var.test_id}"
+    namespace = var.test_namespace
+
+    # Annotations to associate IAM roles (specific to EKS)
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.eks_s3_access_role.arn
+    }
+  }
+}
 # get eks cluster
 data "aws_eks_cluster" "testing_cluster" {
   name = var.eks_cluster_name
@@ -99,14 +114,9 @@ resource "aws_iam_role" "eks_s3_access_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "eks_s3_access_policy" {
+resource "aws_iam_role_policy_attachment" "s3_read_only_policy" {
   role       = aws_iam_role.eks_s3_access_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
-
-resource "google_service_account" "service_account" {
-  account_id   = "service-account-${var.test_id}"
-  display_name = "Service Account"
 }
 
 ### Setting up the sample app on the cluster
