@@ -21,7 +21,10 @@ terraform {
     aws = {
       source = "hashicorp/aws"
     }
-
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 4.0"
+    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = ">= 2.16.1"
@@ -33,13 +36,13 @@ terraform {
     }
   }
 }
+provider "google" {
+  project     = "my-project-id"
+  region      = "us-west-2"
+}
 
 provider "aws" {
   region = var.aws_region
-  endpoints {
-    eks = "https://api.beta.us-west-2.wesley.amazonaws.com"
-    # Add other AWS service endpoints as needed
-  }
 }
 
 # get eks cluster
@@ -101,17 +104,9 @@ resource "aws_iam_role_policy_attachment" "eks_s3_access_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 }
 
-# Define IAM Service Account in EKS
-resource "aws_eks_service_account" "example_service_account" {
-  cluster_name   = var.eks_cluster_name
-  namespace      = var.test_namespace
-  name           = "service-account-${var.test_id}"
-  role_arn       = aws_iam_role.eks_s3_access_role.arn
-  depends_on     = [aws_iam_role_policy_attachment.eks_s3_access_policy]
-
-  tags = {
-    Environment = "Production"
-  }
+resource "google_service_account" "service_account" {
+  account_id   = "service-account-${var.test_id}"
+  display_name = "Service Account"
 }
 
 ### Setting up the sample app on the cluster
@@ -246,7 +241,7 @@ resource "kubernetes_deployment" "sample_remote_app_deployment" {
         }
       }
       spec {
-        service_account_name = var.service_account_aws_access
+        service_account_name = "service-account-${var.test_id}"
         container {
           name = "back-end"
           image = var.sample_remote_app_image
