@@ -48,12 +48,6 @@ provider "aws" {
 # get eks cluster
 data "aws_eks_cluster" "testing_cluster" {
   name = var.eks_cluster_name
-  role_arn = local.role_arn
-  version  = var.k8s_version
-  vpc_config {
-    subnet_ids         = module.basic_components.public_subnet_ids
-    security_group_ids = [module.basic_components.security_group]
-  }
 }
 data "aws_eks_cluster_auth" "testing_cluster" {
   name = var.eks_cluster_name
