@@ -47,16 +47,16 @@ provider "aws" {
 
 # get eks cluster
 data "aws_eks_cluster" "testing_cluster" {
-    name = var.eks_cluster_name
-    role_arn = local.role_arn
-    version  = var.k8s_version
+  name = var.eks_cluster_name
+  role_arn = local.role_arn
+  version  = var.k8s_version
   vpc_config {
     subnet_ids         = module.basic_components.public_subnet_ids
     security_group_ids = [module.basic_components.security_group]
   }
 }
 data "aws_eks_cluster_auth" "testing_cluster" {
-    name = var.eks_cluster_name
+  name = var.eks_cluster_name
 }
 
 # set up kubectl
@@ -91,44 +91,7 @@ resource "local_file" "kubeconfig" {
 }
 
 
-# Create IAM Role for EKS Nodes
-
-# Create IAM Role for EKS Nodes
-resource "aws_iam_role" "eks_node_role" {
-  name = "eks-node-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-# Attach AmazonEKSWorkerNodePolicy to IAM Role
-resource "aws_iam_role_policy_attachment" "eks_node_policy" {
-  role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-}
-
-# Attach AmazonS3ReadOnlyAccess Policy to IAM Role
-resource "aws_iam_role_policy_attachment" "s3_read_only_policy" {
-  role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
-
-# Create IAM Instance Profile
-resource "aws_iam_instance_profile" "eks_node_instance_profile" {
-  name = "eks-node-instance-profile"
-  role = aws_iam_role.eks_node_role.name
-}
-
-
+# EKS Node Groups
 resource "aws_eks_node_group" "this" {
   cluster_name    = var.eks_cluster_name
   node_group_name = "cwagent-operator-eks-integ-node"
@@ -185,7 +148,7 @@ resource "aws_iam_role_policy_attachment" "node_AmazonEKS_CNI_Policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOnly" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccessAttachment"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
   role       = aws_iam_role.node_role.name
 }
 
@@ -195,11 +158,11 @@ resource "aws_iam_role_policy_attachment" "node_CloudWatchAgentServerPolicy" {
 }
 
 
+
 locals {
   role_arn = format("%s%s", module.basic_components.role_arn, var.beta ? "-eks-beta" : "")
   aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
 }
-
 ### Setting up the sample app on the cluster
 resource "kubernetes_deployment" "sample_app_deployment" {
   metadata {
@@ -259,7 +222,7 @@ resource "kubernetes_service" "sample_app_service" {
   spec {
     type = "NodePort"
     selector = {
-        app = "sample-app"
+      app = "sample-app"
     }
     port {
       protocol = "TCP"
@@ -282,7 +245,7 @@ resource "kubernetes_ingress_v1" "sample-app-ingress" {
       "alb.ingress.kubernetes.io/target-type" = "ip"
     }
     labels = {
-        app = "sample-app-ingress"
+      app = "sample-app-ingress"
     }
   }
   spec {
@@ -382,7 +345,7 @@ resource "kubernetes_ingress_v1" "sample-remote-app-ingress" {
       "alb.ingress.kubernetes.io/target-type" = "ip"
     }
     labels = {
-        app = "sample-remote-app-ingress"
+      app = "sample-remote-app-ingress"
     }
   }
   spec {
