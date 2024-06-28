@@ -80,6 +80,38 @@ resource "local_file" "kubeconfig" {
   content = data.template_file.kubeconfig_file.rendered
   filename = "${var.kube_directory_path}/config"
 }
+# Define IAM Role and Policy Attachment
+resource "aws_iam_role" "eks_s3_access_role" {
+  name               = "eks-s3-access-${var.test_id}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = {
+        Service = "eks.amazonaws.com"
+      },
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_s3_access_policy" {
+  role       = aws_iam_role.eks_s3_access_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
+# Define IAM Service Account in EKS
+resource "aws_eks_service_account" "example_service_account" {
+  cluster_name   = var.eks_cluster_name
+  namespace      = var.test_namespace
+  name           = "service-account-${var.test_id}"
+  role_arn       = aws_iam_role.eks_s3_access_role.arn
+  depends_on     = [aws_iam_role_policy_attachment.eks_s3_access_policy]
+
+  tags = {
+    Environment = "Production"
+  }
+}
 
 ### Setting up the sample app on the cluster
 
@@ -108,7 +140,7 @@ resource "kubernetes_deployment" "sample_app_deployment" {
         }
       }
       spec {
-#        service_account_name = "service-account-us-east-1-9705873051-44"
+        service_account_name ="service-account-${var.test_id}"
         container {
           name = "back-end"
           image = var.sample_app_image
