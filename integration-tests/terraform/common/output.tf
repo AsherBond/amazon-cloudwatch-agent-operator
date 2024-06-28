@@ -10,5 +10,5 @@ output "cwa_iam_role" {
 }
 
 output "vpc_security_group" {
-  value = "default"
+  value = "cw-agent-eks-addon-test-beta-cluster-NODES-NodeSecurityGroup-oH5j5mOhcW8I"
 }
