@@ -21,10 +21,6 @@ terraform {
     aws = {
       source = "hashicorp/aws"
     }
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 4.0"
-    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = ">= 2.16.1"
@@ -49,17 +45,7 @@ provider "aws" {
   }
 }
 
-resource "kubernetes_service_account" "example_service_account" {
-  metadata {
-    name      = "service-account-${var.test_id}"
-    namespace = var.test_namespace
 
-    # Annotations to associate IAM roles (specific to EKS)
-    annotations = {
-      "eks.amazonaws.com/role-arn" = aws_iam_role.eks_s3_access_role.arn
-    }
-  }
-}
 # get eks cluster
 data "aws_eks_cluster" "testing_cluster" {
   name = var.eks_cluster_name
