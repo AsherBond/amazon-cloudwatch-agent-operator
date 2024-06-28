@@ -39,10 +39,6 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  endpoints {
-    eks = "https://api.beta.us-west-2.wesley.amazonaws.com"
-    # Add other AWS service endpoints as needed
-  }
 }
 
 # get eks cluster
