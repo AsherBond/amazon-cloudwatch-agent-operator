@@ -1,3 +1,6 @@
+//this goes all the way until unauthorized for beta
+
+
 # ------------------------------------------------------------------------
 # Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
@@ -12,13 +15,7 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------------
-module "common" {
-  source = "../common"
-}
 
-module "basic_components" {
-  source = "../basic_components"
-}
 terraform {
   required_providers {
     aws = {
@@ -39,6 +36,10 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  endpoints {
+    eks = "https://api.beta.us-west-2.wesley.amazonaws.com"
+    # Add other AWS service endpoints as needed
+  }
 }
 
 # get eks cluster
@@ -80,118 +81,43 @@ resource "local_file" "kubeconfig" {
   filename = "${var.kube_directory_path}/config"
 }
 
-
-# EKS Node Groups
-resource "aws_eks_node_group" "this" {
-  cluster_name    = var.eks_cluster_name
-  node_group_name = "cwagent-operator-eks-integ-node"
-  node_role_arn   = aws_iam_role.node_role.arn
-  subnet_ids      = module.basic_components.public_subnet_ids
-
-  scaling_config {
-    desired_size = 1
-    max_size     = 1
-    min_size     = 1
-  }
-
-  ami_type       = "AL2_x86_64"
-  capacity_type  = "ON_DEMAND"
-  disk_size      = 20
-  instance_types = ["t3.medium"]
-
-  depends_on = [
-    aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
-    aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
-    aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
-    aws_iam_role_policy_attachment.node_CloudWatchAgentServerPolicy
-  ]
-}
-
-# EKS Node IAM Role
-resource "aws_iam_role" "node_role" {
-  name = "cwagent-operator-eks-Worker-Role-${module.common.testing_id}"
-
-  assume_role_policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-POLICY
-}
-
-resource "aws_iam_role_policy_attachment" "node_AmazonEKSWorkerNodePolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.node_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "node_AmazonEKS_CNI_Policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.node_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOnly" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-  role       = aws_iam_role.node_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "node_CloudWatchAgentServerPolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-  role       = aws_iam_role.node_role.name
-}
-
-
-
-locals {
-  role_arn = format("%s%s", module.basic_components.role_arn, var.beta ? "-eks-beta" : "")
-  aws_eks  = format("%s%s", "aws eks --region ${var.region}", var.beta ? " --endpoint ${var.beta_endpoint}" : "")
-}
 ### Setting up the sample app on the cluster
+
 resource "kubernetes_deployment" "sample_app_deployment" {
+
   metadata {
     name      = "sample-app-deployment-${var.test_id}"
     namespace = var.test_namespace
-
-    annotations = {
-      # Add any necessary annotations here
-      "instrumentation.opentelemetry.io/inject-java" = "true"
-    }
   }
 
   spec {
     replicas = 1
-
     selector {
       match_labels = {
         app = "sample-app"
       }
     }
-
     template {
       metadata {
         labels = {
           app = "sample-app"
         }
+        annotations = {
+          # these annotations allow for OTel Java instrumentation
+          "instrumentation.opentelemetry.io/inject-java" = "true"
+        }
       }
-
       spec {
+        service_account_name = "service-account-us-east-1-9705873051-44"
         container {
-          name  = "back-end"
+          name = "back-end"
           image = var.sample_app_image
           image_pull_policy = "Always"
-
           env {
-            name  = "OTEL_SERVICE_NAME"
+            #inject the test id to service name for unique App Signals metrics
+            name = "OTEL_SERVICE_NAME"
             value = "sample-application-${var.test_id}"
           }
-
           port {
             container_port = 8080
           }
@@ -200,7 +126,6 @@ resource "kubernetes_deployment" "sample_app_deployment" {
     }
   }
 }
-
 
 resource "kubernetes_service" "sample_app_service" {
   depends_on = [ kubernetes_deployment.sample_app_deployment ]
@@ -365,3 +290,4 @@ output "sample_app_endpoint" {
 output "sample_remote_app_endpoint" {
   value = kubernetes_ingress_v1.sample-remote-app-ingress.status.0.load_balancer.0.ingress.0.hostname
 }
+
