@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Exit immediately if a command exits with a non-zero status
-set -e
+set -x
 
 # Define variables
 SERVICE_ACCOUNT_NAME=$1
@@ -13,7 +13,7 @@ AWS_REGION=$6
 AWS_ACCOUNT_ID=$7
 
 # Retrieve the OIDC provider URL
-OIDC_PROVIDER_URL=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.identity.oidc.issuer" --output text)
+OIDC_PROVIDER_URL=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.identity.oidc.issuer" --output text --endpoint https://api.beta.us-west-2.wesley.amazonaws.com)
 
 # Extract the OIDC ID
 OIDC_ID=$(echo $OIDC_PROVIDER_URL | sed 's|https://oidc.eks\.[a-zA-Z0-9-]*\.amazonaws\.com/id/||')

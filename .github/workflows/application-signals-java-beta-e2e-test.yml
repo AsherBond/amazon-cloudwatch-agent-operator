@@ -94,10 +94,10 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          export AWS_ENDPOINT_URL=https://api.beta.us-west-2.wesley.amazonaws.com
-          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://api.beta.us-west-2.wesley.amazonaws.com  
-       
-
+          aws eks update-kubeconfig --name ${{ inputs.test-java-cluster-name }} --region ${{ env.AWS_DEFAULT_REGION }}  --endpoint https://api.beta.us-west-2.wesley.amazonaws.com --kubeconfig ~/.kube/config
+      
+      
+      
 
       - name: Install eksctl
         run: |
@@ -109,9 +109,24 @@ jobs:
       - name: Create role for AWS access from the sample app
         id: create_service_account
         run: |
-          
+          KUBECONFIG=~/.kube/config
+          aws sts get-caller-identity
+          kubectl config view
+          ls -l ~/.kube/config
+          cat ~/.kube/config
+          echo "below is the kubeconfig"
+          echo $KUBECONFIG
+          echo "below is the contexts"
+          kubectl get pods -A
+
+          kubectl config get-contexts  
+          echo "below is the current context"
+          kubectl config current-context
           cd integration-tests/terraform/pulse
-          ./create_service_account.sh \
+          
+          
+          chmod +x ./create-iam-service-account.sh 
+          ./create-iam-service-account.sh \
           service-account-${{ env.TESTING_ID }} \
           ${{ env.SAMPLE_APP_NAMESPACE }} \
           ${{ inputs.test-java-cluster-name }} \
