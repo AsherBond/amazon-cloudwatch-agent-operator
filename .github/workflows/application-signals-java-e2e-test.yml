@@ -138,7 +138,8 @@ jobs:
           echo "Contents of variables.tf:"
           cat variables.tf || echo "variables.tf not found"
           
-          
+          cat ~/.kube/config
+
           terraform init
           terraform validate
           terraform apply -auto-approve \

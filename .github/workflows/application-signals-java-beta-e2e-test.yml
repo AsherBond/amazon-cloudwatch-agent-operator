@@ -106,7 +106,17 @@ jobs:
           tar -xzf eksctl_Linux_amd64.tar.gz -C ${{ github.workspace }}/eksctl && rm eksctl_Linux_amd64.tar.gz
           echo "${{ github.workspace }}/eksctl" >> $GITHUB_PATH
 
-
+      - name: Create role for AWS access from the sample app
+        id: create_service_account
+        run: |
+          integration-tests/terraform/pulse/create_service_account.sh \
+          service-account-${{ env.TESTING_ID }} \
+          ${{ env.SAMPLE_APP_NAMESPACE }} \
+          ${{ inputs.test-java-cluster-name }} \
+          eks-s3-access-${{ env.TESTING_ID }} \
+          arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
+          ${{ env.AWS_DEFAULT_REGION }} \
+          ${{ env.AWS_ACCOUNT_ID }} 
 
       - name: Deploy sample app via Terraform
         run: |
