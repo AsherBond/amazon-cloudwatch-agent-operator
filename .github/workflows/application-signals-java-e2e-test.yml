@@ -32,7 +32,7 @@ env:
   SAMPLE_APP_REMOTE_SERVICE_IMAGE: ${{ secrets.APP_SIGNALS_E2E_SAMPLE_APP_REMOTE_SVC_IMG }}
   METRIC_NAMESPACE: ApplicationSignals
   LOG_GROUP: /aws/application-signals/data
-  ECR_OPERATOR_STAGING_REPO: 506463145083.dkr.ecr.us-west-2.amazonaws.com/cwagent-operator-pre-release:staging
+  ECR_OPERATOR_STAGING_REPO: ${{ vars.ECR_OPERATOR_STAGING_REPO }}
   APPLICATION_SIGNALS_ADOT_IMAGE: 611364707713.dkr.ecr.us-west-2.amazonaws.com/adot-autoinstrumentation-java-operator-staging:1.33.0-SNAPSHOT-91cbba8
   APPLICATION_SIGNALS_CW_AGENT_IMAGE: 506463145083.dkr.ecr.us-west-2.amazonaws.com/cwagent-integration-test:eca8174758d95308006632ec4d5533d765db9ca8
 
@@ -68,24 +68,6 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.TEST_ACCOUNT }}:role/${{ secrets.APP_SIGNALS_E2E_TEST_ROLE_NAME }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
-      - name: Set up terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-
-
-      - name: Set up terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-
-      - name: Checkout the Amazon CloudWatch Agent Operator repository
-        uses: actions/checkout@v2
-        with:
-          role-to-assume: arn:aws:iam::${{ env.TEST_ACCOUNT }}:role/${{ secrets.APP_SIGNALS_E2E_TEST_ROLE_NAME }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-          fetch-depth: 0
-
       # local directory to store the kubernetes config
       - name: Create kubeconfig directory
         run: mkdir -p ${{ github.workspace }}/.kube
@@ -115,31 +97,14 @@ jobs:
           --region ${{ env.AWS_DEFAULT_REGION }} \
           --approve
 
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-
-      - name: Deploy sample app via Terraform
-
+      - name: Deploy sample app via terraform
+        working-directory: terraform/eks
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Listing files in $(pwd):"
-          ls -la
-          
-          aws sts get-caller-identity
-          kubectl config current-context          
-          
-          echo "wooo"
-          cd integration-tests/terraform/pulse
-          aws eks list-clusters --endpoint https://api.beta.us-west-2.wesley.amazonaws.com --region us-west-2
-          echo "Contents of main.tf:"
-          cat main.tf || echo "main.tf not found"
-          
-          echo "Contents of variables.tf:"
-          cat variables.tf || echo "variables.tf not found"
-          
-          cat ~/.kube/config
-
           terraform init
           terraform validate
           terraform apply -auto-approve \
@@ -226,13 +191,13 @@ jobs:
           echo "NEW_CW_AGENT_OPERATOR_IMAGE"=$(kubectl get pods -n amazon-cloudwatch -l app.kubernetes.io/name=amazon-cloudwatch-observability -o json | \
           jq '.items[0].status.containerStatuses[0].image') >> $GITHUB_ENV
 
-#      - name: Check if CW Agent Operator image has changed
-#        run: |
-#          if [ ${{ env.OLD_CW_AGENT_OPERATOR_IMAGE }} = ${{ env.NEW_CW_AGENT_OPERATOR_IMAGE }} ]; then
-#            echo "Operator image did not change"
-#            exit 1
-#          fi
-        
+        #      - name: Check if CW Agent Operator image has changed
+        #        run: |
+        #          if [ ${{ env.OLD_CW_AGENT_OPERATOR_IMAGE }} = ${{ env.NEW_CW_AGENT_OPERATOR_IMAGE }} ]; then
+        #            echo "Operator image did not change"
+        #            exit 1
+        #          fi
+
       - name: Get the sample app endpoint
         run: |
           echo "APP_ENDPOINT=$(terraform output sample_app_endpoint)" >> $GITHUB_ENV
