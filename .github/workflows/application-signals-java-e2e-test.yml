@@ -45,8 +45,8 @@ jobs:
       - name: Get testing resources from aws-application-signals-test-framework
         uses: actions/checkout@v4
         with:
-          repository: aws-observability/aws-application-signals-test-framework
-          ref: ga-release
+          repository: Paramadon/aws-application-signals-test-framework
+          ref: main
 
       - name: Download enablement script
         uses: actions/checkout@v4
