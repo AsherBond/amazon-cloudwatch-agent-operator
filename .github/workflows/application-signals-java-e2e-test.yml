@@ -103,7 +103,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Deploy sample app via terraform
-        working-directory: terraform/eks
+        working-directory: terraform/java/eks
         run: |
           terraform init
           terraform validate
